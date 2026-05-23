@@ -37,8 +37,8 @@ jobs:
             systemctl --user daemon-reload
             systemctl --user restart bharatpulse-mcp.service
             # streamable-http answers 400/406 without a session — still proves it is serving.
-            for i in $(seq 1 20); do
-              code=$(curl -s -o /dev/null -w '%{http_code}' \
+            for i in $(seq 1 60); do
+              code=$(curl -s -o /dev/null -m 5 -w '%{http_code}' \
                 -H 'Accept: application/json, text/event-stream' \
                 http://127.0.0.1:9000/mcp || true)
               if [ "$code" = "400" ] || [ "$code" = "406" ]; then
@@ -47,6 +47,6 @@ jobs:
               fi
               sleep 1
             done
-            echo "mcp did not become healthy in 20s" >&2
+            echo "mcp did not become healthy in 60s" >&2
             journalctl --user -u bharatpulse-mcp.service -n 50 --no-pager >&2 || true
             exit 1
