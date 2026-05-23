@@ -1,0 +1,52 @@
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'mcp/**'
+      - '.github/services/bharatpulse-mcp.service'
+      - '.github/workflows/deploy-mcp.yaml'
+
+name: deploy-bharatpulse-mcp
+
+# Secrets: DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY (DEPLOY_PORT optional, default 22).
+
+jobs:
+  deploy:
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    steps:
+      - name: SSH redeploy
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+            cd ~/bharatpulse
+            git fetch --prune
+            git reset --hard origin/main
+            if ! command -v uv >/dev/null 2>&1; then
+              [ -x "$HOME/.local/bin/uv" ] || curl -LsSf https://astral.sh/uv/install.sh | sh
+              export PATH="$HOME/.local/bin:$PATH"
+            fi
+            [ -d .venv ] || uv venv .venv --python 3.11
+            uv pip install --python .venv/bin/python -e ./mcp
+            systemctl --user daemon-reload
+            systemctl --user restart bharatpulse-mcp.service
+            # streamable-http answers 400/406 without a session — still proves it is serving.
+            for i in $(seq 1 20); do
+              code=$(curl -s -o /dev/null -w '%{http_code}' \
+                -H 'Accept: application/json, text/event-stream' \
+                http://127.0.0.1:9000/mcp || true)
+              if [ "$code" = "400" ] || [ "$code" = "406" ]; then
+                echo "mcp healthy after ${i}s (status $code)"
+                exit 0
+              fi
+              sleep 1
+            done
+            echo "mcp did not become healthy in 20s" >&2
+            journalctl --user -u bharatpulse-mcp.service -n 50 --no-pager >&2 || true
+            exit 1
