@@ -76,7 +76,7 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
         from_date: Optional[str] = None,
         to_date: Optional[str] = None,
         match: str = "fixed",
-        backend: str = "arrow",
+        backend: str = "auto",
         limit: int = 10000,
     ) -> str:
         """Query India HMIS health data and return a monthly time-series.
@@ -95,8 +95,8 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
             from_date: Start month as "Mon YYYY", e.g. "Apr 2015".
             to_date: End month as "Mon YYYY", e.g. "Mar 2020".
             match: "fixed" (substring, default), "regex", or "fuzzy".
-            backend: "arrow" (default) or "duckdb" (lower memory for large
-                     district queries).
+            backend: "auto" (default; duckdb for district, arrow for state),
+                     "arrow", or "duckdb".
             limit: Maximum rows to return (default 10 000; 0 = unlimited).
 
         Returns:

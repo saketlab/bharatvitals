@@ -1,20 +1,19 @@
 [Unit]
-Description=BharatPulse MCP HTTP server
-After=network.target hmisindia-api.service
-Requires=hmisindia-api.service
+Description=bharatpulse MCP HTTP server (port 9000)
+After=network-online.target hmisindia-plumber.service
+Wants=network-online.target
+Requires=hmisindia-plumber.service
 
 [Service]
 Type=simple
-User=sramap
-Group=sramap
-WorkingDirectory=/home/sramap/bharatpulse
+WorkingDirectory=%h/bharatpulse
 Environment=MCP_TRANSPORT=http
 Environment=MCP_HOST=127.0.0.1
 Environment=MCP_PORT=9000
 Environment=BHARATPULSE_HMIS_URL=http://127.0.0.1:8765
-ExecStart=/home/sramap/bharatpulse/.venv/bin/bharatpulse-mcp
-Restart=on-failure
+ExecStart=%h/bharatpulse/.venv/bin/bharatpulse-mcp
+Restart=always
 RestartSec=5
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target

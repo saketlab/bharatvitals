@@ -9,8 +9,6 @@ on:
 
 name: deploy-bharatpulse-mcp
 
-# Secrets: DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY (DEPLOY_PORT optional, default 22).
-
 jobs:
   deploy:
     runs-on: blacksmith-2vcpu-ubuntu-2404
@@ -34,9 +32,11 @@ jobs:
             fi
             [ -d .venv ] || uv venv .venv --python 3.11
             uv pip install --python .venv/bin/python -e ./mcp
+            install -D -m 644 .github/services/bharatpulse-mcp.service \
+                    "$HOME/.config/systemd/user/bharatpulse-mcp.service"
             systemctl --user daemon-reload
+            systemctl --user enable bharatpulse-mcp.service
             systemctl --user restart bharatpulse-mcp.service
-            # streamable-http answers 400/406 without a session — still proves it is serving.
             for i in $(seq 1 60); do
               code=$(curl -s -o /dev/null -m 5 -w '%{http_code}' \
                 -H 'Accept: application/json, text/event-stream' \
