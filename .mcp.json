@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "bharatpulse": {
+      "command": "uvx",
+      "args": ["--from", "bharatpulse-mcp", "bharatpulse-mcp"]
+    }
+  }
+}

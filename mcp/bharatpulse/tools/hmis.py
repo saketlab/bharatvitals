@@ -17,18 +17,15 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
 
     @mcp.tool()
     def hmis_list_states() -> str:
-        """Return all 36 canonical state and union territory names in the HMIS data."""
+        """List all 36 state/UT names in HMIS data."""
         return _to_json(client.get(_SOURCE, "/states", {}))
 
     @mcp.tool()
     def hmis_list_districts(state: Optional[str] = None) -> str:
-        """Return state-district pairs in the district-level HMIS data.
+        """State-district pairs in district-level HMIS data.
 
         Args:
-            state: Optional state name to filter results.
-
-        Returns:
-            JSON array of {state, district} objects.
+            state: State name to filter, or None for all.
         """
         return _to_json(client.get(_SOURCE, "/districts", {"state": state}))
 
@@ -39,18 +36,13 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
         match: str = "fixed",
         min_months: Optional[int] = None,
     ) -> str:
-        """List or search available HMIS indicators.
+        """Search HMIS indicators.
 
         Args:
-            pattern: Optional search string (case-insensitive substring by default).
-                     Leave empty to list all indicators.
-            geography: "state" for state-level indicators (default),
-                       "district" for district-level.
-            match: "fixed" (substring), "regex", or "fuzzy" (approximate).
-            min_months: Only include indicators with at least this many months of data.
-
-        Returns:
-            JSON array with canonical_name, n_yearmon, first_month, last_month.
+            pattern: Search string (case-insensitive). Empty = all indicators.
+            geography: "state" (default) or "district".
+            match: "fixed" (substring), "regex", or "fuzzy".
+            min_months: Minimum months of data coverage.
         """
         return _to_json(
             client.get(
@@ -79,29 +71,20 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
         backend: str = "auto",
         limit: int = 10000,
     ) -> str:
-        """Query India HMIS health data and return a monthly time-series.
+        """Query HMIS health data as monthly time-series.
 
         Args:
-            indicator: Indicator name or search pattern, e.g. "malaria" or
-                       "Live Birth - Female". Matched against canonical names.
+            indicator: Name or search pattern, e.g. "malaria", "Live Birth - Female".
             geography: "state" (default) or "district".
             state: Comma-separated state names, e.g. "Bihar,Odisha".
-                   Case-insensitive; common aliases are resolved automatically.
-            district: Comma-separated district names. Only valid when
-                      geography="district".
-            sector: Comma-separated sectors — "Total", "Public", "Private",
-                    "Rural", "Urban".
-            category: Sub-category filter, e.g. "Total", "Number Positive".
-            from_date: Start month as "Mon YYYY", e.g. "Apr 2015".
-            to_date: End month as "Mon YYYY", e.g. "Mar 2020".
-            match: "fixed" (substring, default), "regex", or "fuzzy".
-            backend: "auto" (default; duckdb for district, arrow for state),
-                     "arrow", or "duckdb".
-            limit: Maximum rows to return (default 10 000; 0 = unlimited).
-
-        Returns:
-            JSON array with canonical_name, monyear, state, sector, category,
-            value (and district when geography="district").
+            district: Comma-separated district names (geography="district" only).
+            sector: "Total", "Public", "Private", "Rural", or "Urban".
+            category: Sub-category, e.g. "Total", "Number Positive".
+            from_date: Start month, e.g. "Apr 2015".
+            to_date: End month, e.g. "Mar 2020".
+            match: "fixed" (substring), "regex", or "fuzzy".
+            backend: "auto" (default), "arrow", or "duckdb".
+            limit: Max rows (default 10000, 0 = unlimited).
         """
         return _to_json(
             client.get(
@@ -132,20 +115,15 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
         method: str = "pgram",
         detrend: bool = True,
     ) -> str:
-        """Detect whether an HMIS indicator has seasonal or periodic patterns.
+        """Detect seasonal or periodic patterns in an HMIS indicator.
 
         Args:
-            indicator: Indicator name (exact or substring match).
-            state: State to filter to. Use a single state for a clean series.
-            category: Sub-category filter, e.g. "Total".
-            sector: Sector filter, e.g. "Total" or "Public".
-            method: "pgram" — periodogram + ACF (default, evenly sampled).
-                    "lomb_scargle" — Baluev FAP test, robust to missing months.
-            detrend: Remove a linear trend before analysis (default True).
-
-        Returns:
-            JSON with is_periodic, dominant_period (months), and significance
-            metrics (spectral_power + acf_peak for pgram; fap for lomb_scargle).
+            indicator: Indicator name (exact or substring).
+            state: Single state recommended for clean series.
+            category: e.g. "Total".
+            sector: e.g. "Total" or "Public".
+            method: "pgram" (periodogram + ACF) or "lomb_scargle" (robust to gaps).
+            detrend: Remove linear trend first (default True).
         """
         return _to_json(
             client.get(
@@ -171,22 +149,16 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
         frequency: int = 12,
         s_window: str = "periodic",
     ) -> str:
-        """Decompose an HMIS time series into trend, seasonal, and residual components.
-
-        Uses STL (Seasonal-Trend decomposition via Loess) on monthly data.
+        """STL decomposition into trend, seasonal, and residual.
 
         Args:
-            indicator: Indicator name (exact or substring match).
-            state: State to filter to. Single state recommended.
+            indicator: Indicator name (exact or substring).
+            state: Single state recommended.
             category: Sub-category filter.
             sector: Sector filter.
-            frequency: Seasonal period in months (default 12 = annual cycle).
-            s_window: "periodic" — constant seasonality (default).
-                      Odd integer as string, e.g. "13" — allows seasonality to
-                      evolve; useful for long HMIS series spanning 17+ years.
-
-        Returns:
-            JSON array with date, observed, trend, seasonal, remainder columns.
+            frequency: Seasonal period in months (default 12).
+            s_window: "periodic" (constant) or odd integer string, e.g. "13"
+                      (evolving seasonality for long series).
         """
         return _to_json(
             client.get(

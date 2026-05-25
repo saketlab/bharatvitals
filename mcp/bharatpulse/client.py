@@ -108,7 +108,7 @@ class _SourceServer:
         return self._url
 
     def get(self, endpoint: str, params: dict[str, Any]) -> Any:
-        url = self._resolve_url()  # also lazy-inits self._http
+        url = self._resolve_url()
         clean = {k: v for k, v in params.items() if v is not None}
         resp = self._http.get(  # type: ignore[union-attr]
             f"{url}{endpoint}",

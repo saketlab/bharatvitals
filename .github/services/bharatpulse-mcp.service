@@ -1,8 +1,8 @@
 [Unit]
 Description=bharatpulse MCP HTTP server (port 9000)
-After=network-online.target hmisindia-plumber.service
+After=network-online.target hmisindia-plumber.service mccdindia-plumber.service srsindia-api.service crsindia-api.service
 Wants=network-online.target
-Requires=hmisindia-plumber.service
+Requires=hmisindia-plumber.service mccdindia-plumber.service srsindia-api.service crsindia-api.service
 
 [Service]
 Type=simple
@@ -11,6 +11,9 @@ Environment=MCP_TRANSPORT=http
 Environment=MCP_HOST=127.0.0.1
 Environment=MCP_PORT=9000
 Environment=BHARATPULSE_HMIS_URL=http://127.0.0.1:8765
+Environment=BHARATPULSE_MCCD_URL=http://127.0.0.1:8585
+Environment=BHARATPULSE_SRS_URL=http://127.0.0.1:8686
+Environment=BHARATPULSE_CRS_URL=http://127.0.0.1:8484
 ExecStart=%h/bharatpulse/.venv/bin/bharatpulse-mcp
 Restart=always
 RestartSec=5
