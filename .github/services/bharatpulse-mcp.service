@@ -1,8 +1,7 @@
 [Unit]
 Description=bharatpulse MCP HTTP server (port 9000)
 After=network-online.target hmisindia-api.service mccdindia-api.service srsindia-api.service crsindia-api.service
-Wants=network-online.target
-Requires=hmisindia-api.service mccdindia-api.service srsindia-api.service crsindia-api.service
+Wants=network-online.target hmisindia-api.service mccdindia-api.service srsindia-api.service crsindia-api.service
 
 [Service]
 Type=simple

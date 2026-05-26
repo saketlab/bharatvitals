@@ -23,6 +23,9 @@ jobs:
           script_stop: true
           script: |
             set -euo pipefail
+            if [ ! -d "$HOME/bharatpulse" ]; then
+              git clone https://github.com/saketlab/bharatpulse.git "$HOME/bharatpulse"
+            fi
             cd ~/bharatpulse
             git fetch --prune
             git reset --hard origin/main
