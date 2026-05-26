@@ -249,3 +249,39 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
                 },
             )
         )
+
+    @mcp.tool()
+    def srs_query_stat_report(
+        indicator: Optional[str] = None,
+        state: Optional[str] = None,
+        year: Optional[int] = None,
+        category: Optional[str] = None,
+        limit: int = 10000,
+    ) -> str:
+        """SRS Statistical Report indicators (2011-2024).
+
+        Includes TFR, NMR, U5MR and other indicators not in the Bulletin.
+        23 states, Total/Rural/Urban breakdowns.
+
+        Args:
+            indicator: Comma-separated codes, e.g. "tfr", "nmr,u5mr,imr".
+                       Key codes: tfr, nmr, u5mr, imr, cdr, cbr, enmr, lnmr, pnmr,
+                       cmr, perimr, sbr, gfr, grr. None = all.
+            state: State name. "India" for national.
+            year: e.g. 2020.
+            category: "Total", "Rural", or "Urban". None = all.
+            limit: Max rows (default 10000, 0 = unlimited).
+        """
+        return _to_json(
+            client.get(
+                _SOURCE,
+                "/stat_report",
+                {
+                    "indicator": indicator,
+                    "state": state,
+                    "year": year,
+                    "category": category,
+                    "limit": limit,
+                },
+            )
+        )
