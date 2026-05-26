@@ -44,7 +44,7 @@ jobs:
               code=$(curl -s -o /dev/null -m 5 -w '%{http_code}' \
                 -H 'Accept: application/json, text/event-stream' \
                 http://127.0.0.1:9000/mcp || true)
-              if [ "$code" = "400" ] || [ "$code" = "406" ]; then
+              if [ "$code" = "200" ] || [ "$code" = "400" ] || [ "$code" = "406" ]; then
                 echo "mcp healthy after ${i}s (status $code)"
                 exit 0
               fi
