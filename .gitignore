@@ -1,0 +1,32 @@
+# Python caches
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pytype/
+.coverage
+.coverage.*
+htmlcov/
+
+# Environment
+.env
+.env.*
+!.env.example
+.venv/
+
+# Logs
+*.log
+pip-wheel-metadata/
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# extra file
+VERIFICATION.md
