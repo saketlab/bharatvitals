@@ -98,8 +98,10 @@ svg <- sub(size_attr, sprintf("width='%.2fpt' height='%.2fpt' viewBox='%.2f %.2f
                               vb[3], vb[4], vb[1], vb[2], vb[3], vb[4]), svg)
 writeLines(svg, "logo.svg")
 
+logo_png <- png::readPNG("logo.png")
+logo_h <- 0.35 * 1200 / 630 * nrow(logo_png) / ncol(logo_png)
 card <- ggplot() +
-  annotation_raster(png::readPNG("logo.png"), xmin = 0.05, xmax = 0.40, ymin = 0.06, ymax = 0.94) +
+  annotation_raster(logo_png, xmin = 0.05, xmax = 0.40, ymin = 0.5 - logo_h / 2, ymax = 0.5 + logo_h / 2) +
   annotate("text", x = 0.46, y = 0.60, label = "BharatVitals", hjust = 0,
            family = "albert", colour = PAPER, size = 14) +
   annotate("text", x = 0.46, y = 0.40, hjust = 0, lineheight = 0.95,
