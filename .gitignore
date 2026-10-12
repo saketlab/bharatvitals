@@ -23,6 +23,9 @@ venv/
 env/
 ENV/
 .env
+.env.*
+*.pem
+*.key
 .pytest_cache/
 .mypy_cache/
 .pyright/
@@ -47,3 +50,11 @@ src/*.dll
 *.tar.gz
 vignettes/*.html
 vignettes/*.pdf
+Rplots.pdf
+.DS_Store
+
+# built landing page
+docs/
+
+# local Claude Code session logs
+.claude/logs/

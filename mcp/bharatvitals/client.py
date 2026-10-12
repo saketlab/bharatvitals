@@ -8,18 +8,7 @@ from typing import Any, Optional
 
 import httpx
 
-SOURCE_REGISTRY: dict[str, str] = {
-    "hmis": "hmisindia",
-    "nfhs5": "nfhs5",
-    "nfhs4": "nfhs4",
-    "srs": "srsindia",
-    "mccd": "mccdindia",
-    "census": "censusindia",
-    "crs": "crsindia",
-    "lasi": "lasi",
-    "healthsurvey": "healthsurveyindia",
-    "consumption": "consumptionsurveyindia",
-}
+_RETRY_AFTER = 60.0  # seconds before retrying a source that failed to start
 
 
 @dataclass
@@ -29,9 +18,10 @@ class _SourceServer:
     _proc: Optional[subprocess.Popen] = field(default=None, repr=False)  # type: ignore[type-arg]
     _url: Optional[str] = field(default=None, repr=False)
     _http: Optional[httpx.Client] = field(default=None, repr=False)
+    _failed: Optional[tuple[float, str]] = field(default=None, repr=False)
 
     def _find_plumber_r(self) -> str:
-        env_key = f"BHARATPULSE_{self.source_id.upper()}_PLUMBER_R"
+        env_key = f"BHARATVITALS_{self.source_id.upper()}_PLUMBER_R"
         env_path = os.environ.get(env_key)
         if env_path and os.path.isfile(env_path):
             return env_path
@@ -100,34 +90,75 @@ class _SourceServer:
     def _resolve_url(self) -> str:
         if self._url is not None:
             return self._url
-        env_url = os.environ.get(f"BHARATPULSE_{self.source_id.upper()}_URL")
-        self._url = env_url.rstrip("/") if env_url else self._start()
-        http = httpx.Client(timeout=120.0)
+        if self._failed and time.monotonic() - self._failed[0] < _RETRY_AFTER:
+            raise RuntimeError(self._failed[1])
+        env_url = os.environ.get(f"BHARATVITALS_{self.source_id.upper()}_URL")
+        try:
+            self._url = env_url.rstrip("/") if env_url else self._start()
+        except (OSError, RuntimeError, subprocess.SubprocessError) as e:
+            # a failed start costs up to 60 s; don't repeat it on every call
+            self._failed = (time.monotonic(), str(e))
+            raise
+        http = httpx.Client(timeout=120.0, headers={"X-Client": "mcp/bharatvitals"})
         atexit.register(http.close)
         self._http = http
         return self._url
 
-    def get(self, endpoint: str, params: dict[str, Any]) -> Any:
+    @property
+    def attempted(self) -> bool:
+        """True once a call has resolved or failed, or a URL is configured."""
+        return (
+            self._url is not None
+            or self._failed is not None
+            or f"BHARATVITALS_{self.source_id.upper()}_URL" in os.environ
+        )
+
+    def get(
+        self,
+        endpoint: str,
+        params: dict[str, Any],
+        timeout: Any = httpx.USE_CLIENT_DEFAULT,
+    ) -> Any:
         url = self._resolve_url()
         clean = {k: v for k, v in params.items() if v is not None}
         resp = self._http.get(  # type: ignore[union-attr]
             f"{url}{endpoint}",
             params=clean,
+            timeout=timeout,
         )
-        resp.raise_for_status()
-        return resp.json()
+        if resp.is_error:
+            # R puts the reason for bad input in the body
+            raise RuntimeError(
+                f"{self.source_id} API returned HTTP {resp.status_code}: {resp.text[:500]}"
+            )
+        try:
+            return resp.json()
+        except ValueError as e:
+            raise RuntimeError(
+                f"{self.source_id} API returned non-JSON: {resp.text[:500]}"
+            ) from e
 
 
-class BharatPulseClient:
-    def __init__(self) -> None:
+class BharatVitalsClient:
+    def __init__(self, packages: dict[str, str]) -> None:
+        """packages: source id -> R package that ships its plumber.R."""
         self._servers: dict[str, _SourceServer] = {
             sid: _SourceServer(source_id=sid, pkg_name=pkg)
-            for sid, pkg in SOURCE_REGISTRY.items()
+            for sid, pkg in packages.items()
         }
 
-    def get(self, source: str, endpoint: str, params: dict[str, Any]) -> Any:
+    def get(
+        self,
+        source: str,
+        endpoint: str,
+        params: dict[str, Any],
+        timeout: Any = httpx.USE_CLIENT_DEFAULT,
+    ) -> Any:
         if source not in self._servers:
             raise KeyError(
                 f"Unknown source '{source}'. Known: {', '.join(sorted(self._servers))}"
             )
-        return self._servers[source].get(endpoint, params)
+        return self._servers[source].get(endpoint, params, timeout)
+
+    def attempted(self, source: str) -> bool:
+        return self._servers[source].attempted

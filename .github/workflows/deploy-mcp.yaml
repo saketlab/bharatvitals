@@ -4,10 +4,14 @@ on:
     branches: [main]
     paths:
       - 'mcp/**'
-      - '.github/services/bharatpulse-mcp.service'
+      - '.github/services/bharatvitals-mcp.service'
       - '.github/workflows/deploy-mcp.yaml'
 
-name: deploy-bharatpulse-mcp
+name: deploy-bharatvitals-mcp
+
+concurrency:
+  group: deploy-bharatvitals-main
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -23,10 +27,15 @@ jobs:
           script_stop: true
           script: |
             set -euo pipefail
-            if [ ! -d "$HOME/bharatpulse" ]; then
-              git clone https://github.com/saketlab/bharatpulse.git "$HOME/bharatpulse"
+            # one-time with the unit block below, delete after first deploy; mv keeps repo auth
+            if [ ! -d "$HOME/bharatvitals" ] && [ -d "$HOME/bharatpulse/.git" ]; then
+              mv "$HOME/bharatpulse" "$HOME/bharatvitals"
+              rm -rf "$HOME/bharatvitals/.venv"   # its scripts point at the old path
+              git -C "$HOME/bharatvitals" remote set-url origin \
+                "$(git -C "$HOME/bharatvitals" remote get-url origin | sed 's/bharatpulse/bharatvitals/')"
             fi
-            cd ~/bharatpulse
+            [ -d "$HOME/bharatvitals" ] || git clone https://github.com/saketlab/bharatvitals.git "$HOME/bharatvitals"
+            cd ~/bharatvitals
             git fetch --prune
             git reset --hard origin/main
             if ! command -v uv >/dev/null 2>&1; then
@@ -35,21 +44,25 @@ jobs:
             fi
             [ -d .venv ] || uv venv .venv --python 3.11
             uv pip install --python .venv/bin/python -e ./mcp
-            install -D -m 644 .github/services/bharatpulse-mcp.service \
-                    "$HOME/.config/systemd/user/bharatpulse-mcp.service"
+            # one-time: the old unit holds port 9000
+            if [ -f "$HOME/.config/systemd/user/bharatpulse-mcp.service" ]; then
+              systemctl --user disable --now bharatpulse-mcp.service || true
+              rm -f "$HOME/.config/systemd/user/bharatpulse-mcp.service"
+              systemctl --user daemon-reload
+              systemctl --user reset-failed bharatpulse-mcp.service 2>/dev/null || true
+            fi
+            install -D -m 644 .github/services/bharatvitals-mcp.service \
+                    "$HOME/.config/systemd/user/bharatvitals-mcp.service"
             systemctl --user daemon-reload
-            systemctl --user enable bharatpulse-mcp.service
-            systemctl --user restart bharatpulse-mcp.service
+            systemctl --user enable bharatvitals-mcp.service
+            systemctl --user restart bharatvitals-mcp.service
             for i in $(seq 1 60); do
               code=$(curl -s -o /dev/null -m 5 -w '%{http_code}' \
                 -H 'Accept: application/json, text/event-stream' \
                 http://127.0.0.1:9000/mcp || true)
-              if [ "$code" = "200" ] || [ "$code" = "400" ] || [ "$code" = "406" ]; then
-                echo "mcp healthy after ${i}s (status $code)"
-                exit 0
-              fi
+              case "$code" in 200|400|406) echo "mcp healthy after ${i}s (status $code)"; exit 0 ;; esac
               sleep 1
             done
             echo "mcp did not become healthy in 60s" >&2
-            journalctl --user -u bharatpulse-mcp.service -n 50 --no-pager >&2 || true
+            journalctl --user -u bharatvitals-mcp.service -n 50 --no-pager >&2 || true
             exit 1

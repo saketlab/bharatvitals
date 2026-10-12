@@ -4,38 +4,45 @@ from typing import TYPE_CHECKING, Optional
 from fastmcp import FastMCP
 
 if TYPE_CHECKING:
-    from bharatpulse.client import BharatPulseClient
+    from bharatvitals.client import BharatVitalsClient
 
-_SOURCE = "crs"
+SOURCE = "crs"
+PACKAGE = "crsindia"
+LABEL = "CRS"
+GUIDE = (
+    "Registered births, deaths, infant deaths, still births, 36 states, "
+    "700+ districts, 2009-2023. Start with crs_list_tables or "
+    "crs_vital_rates."
+)
 
 
 def _to_json(data: object) -> str:
     return json.dumps(data)
 
 
-def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
+def register(mcp: FastMCP, client: "BharatVitalsClient") -> None:
 
     @mcp.resource("crs://states")
     def crs_states_resource() -> str:
         """All 36 canonical state/UT names in CRS data."""
-        return _to_json(client.get(_SOURCE, "/states", {}))
+        return _to_json(client.get(SOURCE, "/states", {}))
 
     @mcp.resource("crs://tables")
     def crs_tables_resource() -> str:
         """CRS table numbers with descriptions."""
-        return _to_json(client.get(_SOURCE, "/tables", {}))
+        return _to_json(client.get(SOURCE, "/tables", {}))
 
     @mcp.tool()
     def crs_list_states() -> str:
         """List all 36 canonical state/UT names in CRS data."""
-        return _to_json(client.get(_SOURCE, "/states", {}))
+        return _to_json(client.get(SOURCE, "/states", {}))
 
     @mcp.tool()
     def crs_list_tables() -> str:
         """List the 10 CRS tables: births, deaths, infant deaths, still births,
         registration completeness, deaths by age, and district-level equivalents.
         """
-        return _to_json(client.get(_SOURCE, "/tables", {}))
+        return _to_json(client.get(SOURCE, "/tables", {}))
 
     @mcp.tool()
     def crs_available_years(
@@ -49,7 +56,7 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
             state: State name to check coverage for.
         """
         return _to_json(
-            client.get(_SOURCE, "/available_years", {"table": table, "state": state})
+            client.get(SOURCE, "/available_years", {"table": table, "state": state})
         )
 
     @mcp.tool()
@@ -77,7 +84,7 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
         """
         return _to_json(
             client.get(
-                _SOURCE,
+                SOURCE,
                 "/vital_rates",
                 {"year": year, "state": state, "limit": limit},
             )
@@ -101,7 +108,7 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
         """
         return _to_json(
             client.get(
-                _SOURCE,
+                SOURCE,
                 "/adjusted_events",
                 {"year": year, "state": state, "limit": limit},
             )
@@ -122,7 +129,7 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
         """
         return _to_json(
             client.get(
-                _SOURCE, "/births", {"year": year, "state": state, "limit": limit}
+                SOURCE, "/births", {"year": year, "state": state, "limit": limit}
             )
         )
 
@@ -141,7 +148,7 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
         """
         return _to_json(
             client.get(
-                _SOURCE, "/deaths", {"year": year, "state": state, "limit": limit}
+                SOURCE, "/deaths", {"year": year, "state": state, "limit": limit}
             )
         )
 
@@ -160,7 +167,7 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
         """
         return _to_json(
             client.get(
-                _SOURCE,
+                SOURCE,
                 "/infant_deaths",
                 {"year": year, "state": state, "limit": limit},
             )
@@ -181,7 +188,7 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
         """
         return _to_json(
             client.get(
-                _SOURCE,
+                SOURCE,
                 "/still_births",
                 {"year": year, "state": state, "limit": limit},
             )
@@ -204,7 +211,7 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
         """
         return _to_json(
             client.get(
-                _SOURCE,
+                SOURCE,
                 "/registration",
                 {"year": year, "state": state, "limit": limit},
             )
@@ -225,7 +232,7 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
         """
         return _to_json(
             client.get(
-                _SOURCE,
+                SOURCE,
                 "/deaths_by_age",
                 {"year": year, "state": state, "limit": limit},
             )
@@ -246,7 +253,7 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
         """
         return _to_json(
             client.get(
-                _SOURCE,
+                SOURCE,
                 "/district_births",
                 {"year": year, "state": state, "limit": limit},
             )
@@ -267,7 +274,7 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
         """
         return _to_json(
             client.get(
-                _SOURCE,
+                SOURCE,
                 "/district_deaths",
                 {"year": year, "state": state, "limit": limit},
             )
@@ -288,7 +295,7 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
         """
         return _to_json(
             client.get(
-                _SOURCE,
+                SOURCE,
                 "/district_infant_deaths",
                 {"year": year, "state": state, "limit": limit},
             )
@@ -309,7 +316,7 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
         """
         return _to_json(
             client.get(
-                _SOURCE,
+                SOURCE,
                 "/district_still_births",
                 {"year": year, "state": state, "limit": limit},
             )
@@ -332,7 +339,7 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
         """
         return _to_json(
             client.get(
-                _SOURCE,
+                SOURCE,
                 "/population_state",
                 {"year": year, "state": state, "limit": limit},
             )
@@ -358,7 +365,7 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
         """
         return _to_json(
             client.get(
-                _SOURCE,
+                SOURCE,
                 "/population_district",
                 {"year": year, "state": state, "boundary": boundary, "limit": limit},
             )

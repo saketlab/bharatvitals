@@ -1,0 +1,115 @@
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'README.md'
+      - 'site/**'
+      - 'scripts/build_site.py'
+      - 'mcp/**'
+      - '.github/services/bharatvitals-site.nginx'
+      - '.github/workflows/deploy-site.yaml'
+  push:
+    branches: [main]
+    paths:
+      - 'README.md'
+      - 'site/**'
+      - 'scripts/build_site.py'
+      - 'mcp/**'
+      - '.github/services/bharatvitals-site.nginx'
+      - '.github/workflows/deploy-site.yaml'
+
+name: deploy-bharatvitals-site
+
+# shared with deploy-mcp so /mcp is never mid-restart here
+concurrency:
+  group: deploy-bharatvitals-${{ github.event_name == 'pull_request' && github.run_id || 'main' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    env:
+      SITE_ROOT: /var/www/r-pkgdown/bharatvitals/docs
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: mcp/uv.lock
+
+      - name: Check the client
+        run: uv run --locked --project mcp python mcp/test_client.py
+
+      # also proves the MCP server imports and registers its tools
+      - name: Build the landing page
+        run: uv run --locked --project mcp --with markdown python scripts/build_site.py docs
+
+      - name: Check the nginx root matches SITE_ROOT
+        run: grep -qx "    root $SITE_ROOT;" .github/services/bharatvitals-site.nginx
+
+      # same docs@host login as srsindia's HOSTINGER_* secrets
+      - name: Upload the site
+        if: github.event_name != 'pull_request'
+        uses: burnett01/rsync-deployments@7.0.1
+        with:
+          switches: -avzr --delete
+          path: docs/
+          remote_path: ${{ env.SITE_ROOT }}/
+          remote_host: ${{ secrets.DEPLOY_HOST }}
+          remote_port: ${{ secrets.DEPLOY_PORT || 22 }}
+          remote_user: ${{ secrets.DEPLOY_USER }}
+          remote_key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Upload the nginx vhost
+        if: github.event_name != 'pull_request'
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          source: .github/services/bharatvitals-site.nginx
+          target: bharatvitals-site-incoming
+          strip_components: 2
+          rm: true
+
+      - name: Install the nginx vhost
+        if: github.event_name != 'pull_request'
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          envs: SITE_ROOT
+          script_stop: true
+          script: |
+            set -euo pipefail
+            # the vhost replaces the catch-all, so refuse it until the files are there
+            test -s "$SITE_ROOT/index.html" || { echo "$SITE_ROOT/index.html missing" >&2; exit 1; }
+
+            conf=/etc/nginx/conf.d/bharatvitals-site.conf
+            backup="$(mktemp)"
+            if [ -f "$conf" ]; then cp "$conf" "$backup"; fi
+            sudo install -D -m 644 "$HOME/bharatvitals-site-incoming/bharatvitals-site.nginx" "$conf"
+            if ! sudo nginx -t; then
+              if [ -s "$backup" ]; then sudo install -m 644 "$backup" "$conf"; else sudo rm -f "$conf"; fi
+              echo "nginx -t failed; restored the previous $conf" >&2
+              exit 1
+            fi
+            sudo nginx -s reload
+            rm -rf "$HOME/bharatvitals-site-incoming" "$backup"
+
+            sleep 1
+            for path in / /llms.txt; do
+              code=$(curl -sk -o /dev/null -w '%{http_code}' \
+                       -H 'Host: bharatvitals.saketlab.org' "https://127.0.0.1$path" || true)
+              test "$code" = "200" || { echo "$path answered $code" >&2; exit 1; }
+            done
+            code=$(curl -sk -o /dev/null -m 5 -w '%{http_code}' -X POST \
+                     -H 'Host: bharatvitals.saketlab.org' -H 'Accept: application/json, text/event-stream' \
+                     https://127.0.0.1/mcp || true)
+            case "$code" in 200|400|406) echo "site and /mcp deployed" ;; *) echo "/mcp answered $code" >&2; exit 1 ;; esac

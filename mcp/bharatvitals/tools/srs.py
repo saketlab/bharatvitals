@@ -4,36 +4,42 @@ from typing import TYPE_CHECKING, Optional
 from fastmcp import FastMCP
 
 if TYPE_CHECKING:
-    from bharatpulse.client import BharatPulseClient
+    from bharatvitals.client import BharatVitalsClient
 
-_SOURCE = "srs"
+SOURCE = "srs"
+PACKAGE = "srsindia"
+LABEL = "SRS"
+GUIDE = (
+    "Life tables, cause-of-death, vital rates, 36 states, 1970-present. "
+    "Start with srs_available_periods or srs_summary_indicators."
+)
 
 
 def _to_json(data: object) -> str:
     return json.dumps(data)
 
 
-def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
+def register(mcp: FastMCP, client: "BharatVitalsClient") -> None:
 
     @mcp.resource("srs://states")
     def srs_states_resource() -> str:
         """All 36 canonical state/UT names in SRS data (excludes 'India')."""
-        return _to_json(client.get(_SOURCE, "/states", {}))
+        return _to_json(client.get(SOURCE, "/states", {}))
 
     @mcp.resource("srs://life_table_periods")
     def srs_life_table_periods_resource() -> str:
         """Life table periods (5-year rolling windows)."""
-        return _to_json(client.get(_SOURCE, "/life_table_periods", {}))
+        return _to_json(client.get(SOURCE, "/life_table_periods", {}))
 
     @mcp.resource("srs://cod_tables")
     def srs_cod_tables_resource() -> str:
         """Cause-of-death table metadata (slugs, descriptions, periods)."""
-        return _to_json(client.get(_SOURCE, "/cod_tables", {}))
+        return _to_json(client.get(SOURCE, "/cod_tables", {}))
 
     @mcp.resource("srs://bulletin_indicators")
     def srs_bulletin_indicators_resource() -> str:
         """Bulletin indicator codes: cbr, cdr, ngr, imr."""
-        return _to_json(client.get(_SOURCE, "/bulletin_indicators", {}))
+        return _to_json(client.get(SOURCE, "/bulletin_indicators", {}))
 
     @mcp.tool()
     def srs_list_states() -> str:
@@ -41,7 +47,7 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
 
         Use state="India" in query tools for the national aggregate.
         """
-        return _to_json(client.get(_SOURCE, "/states", {}))
+        return _to_json(client.get(SOURCE, "/states", {}))
 
     @mcp.tool()
     def srs_list_life_table_periods() -> str:
@@ -49,7 +55,7 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
 
         E.g. "2007-2011", "2008-2012", ..., "2020-2024".
         """
-        return _to_json(client.get(_SOURCE, "/life_table_periods", {}))
+        return _to_json(client.get(SOURCE, "/life_table_periods", {}))
 
     @mcp.tool()
     def srs_list_cod_tables() -> str:
@@ -57,7 +63,7 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
 
         Use table_slug values in srs_query_cod().
         """
-        return _to_json(client.get(_SOURCE, "/cod_tables", {}))
+        return _to_json(client.get(SOURCE, "/cod_tables", {}))
 
     @mcp.tool()
     def srs_list_cod_periods() -> str:
@@ -65,17 +71,32 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
 
         E.g. "2007-2009", "2010-2013", ..., "2022-2024".
         """
-        return _to_json(client.get(_SOURCE, "/cod_periods", {}))
+        return _to_json(client.get(SOURCE, "/cod_periods", {}))
 
     @mcp.tool()
     def srs_list_bulletin_years() -> str:
         """Years with SRS Bulletin vital statistics (1997-2024, 2002 missing)."""
-        return _to_json(client.get(_SOURCE, "/bulletin_years", {}))
+        return _to_json(client.get(SOURCE, "/bulletin_years", {}))
 
     @mcp.tool()
     def srs_available_periods() -> str:
         """Temporal coverage for all SRS data types (life tables, CoD, bulletin)."""
-        return _to_json(client.get(_SOURCE, "/available_periods", {}))
+        return _to_json(client.get(SOURCE, "/available_periods", {}))
+
+    @mcp.tool()
+    def srs_list_bulletin_indicators() -> str:
+        """Bulletin indicator codes for srs_query_bulletin: cbr, cdr, ngr, imr."""
+        return _to_json(client.get(SOURCE, "/bulletin_indicators", {}))
+
+    @mcp.tool()
+    def srs_list_stat_report_years() -> str:
+        """Years with SRS Statistical Report data (2011 onward)."""
+        return _to_json(client.get(SOURCE, "/stat_report_years", {}))
+
+    @mcp.tool()
+    def srs_list_stat_report_indicators() -> str:
+        """Indicator codes for srs_query_stat_report, e.g. tfr, nmr, u5mr, sbr."""
+        return _to_json(client.get(SOURCE, "/stat_report_indicators", {}))
 
     @mcp.tool()
     def srs_life_expectancy_trend() -> str:
@@ -84,7 +105,7 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
         Columns: period, mid_year, lifespan_at_birth by total/rural/urban
         and person/male/female.
         """
-        return _to_json(client.get(_SOURCE, "/life_expectancy_trend", {}))
+        return _to_json(client.get(SOURCE, "/life_expectancy_trend", {}))
 
     @mcp.tool()
     def srs_summary_indicators(
@@ -106,7 +127,7 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
         """
         return _to_json(
             client.get(
-                _SOURCE,
+                SOURCE,
                 "/summary_indicators",
                 {
                     "state": state,
@@ -128,7 +149,7 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
         Args:
             period: CoD period label, e.g. "2020-2022". None = all periods.
         """
-        return _to_json(client.get(_SOURCE, "/epi_transition", {"period": period}))
+        return _to_json(client.get(SOURCE, "/epi_transition", {"period": period}))
 
     @mcp.tool()
     def srs_arriaga_decompose(
@@ -152,7 +173,7 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
         """
         return _to_json(
             client.get(
-                _SOURCE,
+                SOURCE,
                 "/arriaga",
                 {
                     "state": state,
@@ -181,7 +202,7 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
         """
         return _to_json(
             client.get(
-                _SOURCE,
+                SOURCE,
                 "/life_table",
                 {
                     "state": state,
@@ -208,7 +229,7 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
         """
         return _to_json(
             client.get(
-                _SOURCE,
+                SOURCE,
                 "/cod",
                 {
                     "table": table,
@@ -238,7 +259,7 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
         """
         return _to_json(
             client.get(
-                _SOURCE,
+                SOURCE,
                 "/bulletin",
                 {
                     "indicator": indicator,
@@ -265,8 +286,8 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
 
         Args:
             indicator: Comma-separated codes, e.g. "tfr", "nmr,u5mr,imr".
-                       Key codes: tfr, nmr, u5mr, imr, cdr, cbr, enmr, lnmr, pnmr,
-                       cmr, perimr, sbr, gfr, grr. None = all.
+                       Codes: cbr, cdr, cmr, enmr, gfr, gmfr, grr, imr, lnmr, nmr,
+                       perimr, pnmr, sbr, tfr, tmfr, u5mr. None = all.
             state: State name. "India" for national.
             year: e.g. 2020.
             category: "Total", "Rural", or "Urban". None = all.
@@ -274,7 +295,7 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
         """
         return _to_json(
             client.get(
-                _SOURCE,
+                SOURCE,
                 "/stat_report",
                 {
                     "indicator": indicator,

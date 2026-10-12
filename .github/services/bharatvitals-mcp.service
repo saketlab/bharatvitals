@@ -1,0 +1,22 @@
+[Unit]
+Description=bharatvitals MCP HTTP server (port 9000)
+After=network-online.target hmisindia-api.service mccdindia-api.service srsindia-api.service crsindia-api.service
+Wants=network-online.target hmisindia-api.service mccdindia-api.service srsindia-api.service crsindia-api.service
+
+[Service]
+Type=simple
+WorkingDirectory=%h/bharatvitals
+Environment=MCP_TRANSPORT=http
+Environment=MCP_HOST=127.0.0.1
+Environment=MCP_PORT=9000
+Environment=BHARATVITALS_HMIS_URL=http://127.0.0.1:8765
+Environment=BHARATVITALS_MCCD_URL=http://127.0.0.1:8585
+Environment=BHARATVITALS_SRS_URL=http://127.0.0.1:8686
+Environment=BHARATVITALS_CRS_URL=http://127.0.0.1:8484
+Environment=BHARATVITALS_CENSUS_URL=http://127.0.0.1:8895
+ExecStart=%h/bharatvitals/.venv/bin/bharatvitals-mcp
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

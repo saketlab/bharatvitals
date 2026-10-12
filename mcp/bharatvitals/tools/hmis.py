@@ -4,21 +4,27 @@ from typing import TYPE_CHECKING, Optional
 from fastmcp import FastMCP
 
 if TYPE_CHECKING:
-    from bharatpulse.client import BharatPulseClient
+    from bharatvitals.client import BharatVitalsClient
 
-_SOURCE = "hmis"
+SOURCE = "hmis"
+PACKAGE = "hmisindia"
+LABEL = "HMIS"
+GUIDE = (
+    "840+ health indicators, 36 states, 700+ districts, monthly "
+    "2008-2025. Start with hmis_list_indicators, then hmis_query."
+)
 
 
 def _to_json(data: object) -> str:
     return json.dumps(data, indent=2)
 
 
-def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
+def register(mcp: FastMCP, client: "BharatVitalsClient") -> None:
 
     @mcp.tool()
     def hmis_list_states() -> str:
         """List all 36 state/UT names in HMIS data."""
-        return _to_json(client.get(_SOURCE, "/states", {}))
+        return _to_json(client.get(SOURCE, "/states", {}))
 
     @mcp.tool()
     def hmis_list_districts(state: Optional[str] = None) -> str:
@@ -27,7 +33,7 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
         Args:
             state: State name to filter, or None for all.
         """
-        return _to_json(client.get(_SOURCE, "/districts", {"state": state}))
+        return _to_json(client.get(SOURCE, "/districts", {"state": state}))
 
     @mcp.tool()
     def hmis_list_indicators(
@@ -46,7 +52,7 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
         """
         return _to_json(
             client.get(
-                _SOURCE,
+                SOURCE,
                 "/indicators",
                 {
                     "pattern": pattern,
@@ -88,7 +94,7 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
         """
         return _to_json(
             client.get(
-                _SOURCE,
+                SOURCE,
                 "/query",
                 {
                     "indicator": indicator,
@@ -127,7 +133,7 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
         """
         return _to_json(
             client.get(
-                _SOURCE,
+                SOURCE,
                 "/periodicity",
                 {
                     "indicator": indicator,
@@ -162,7 +168,7 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
         """
         return _to_json(
             client.get(
-                _SOURCE,
+                SOURCE,
                 "/decompose",
                 {
                     "indicator": indicator,

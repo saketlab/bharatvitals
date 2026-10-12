@@ -1,28 +1,28 @@
 [project]
-name = "bharatpulse-mcp"
+name = "bharatvitals-mcp"
 version = "0.1.0"
-description = "MCP server for BharatPulse — AI-accessible India public health data"
+description = "MCP server for BharatVitals — AI-accessible India public health data"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
-keywords = ["mcp", "india", "public-health", "hmis", "bharatpulse"]
+keywords = ["mcp", "india", "public-health", "hmis", "bharatvitals"]
 dependencies = [
     "fastmcp>=2.0",
     "httpx>=0.27",
 ]
 
 [project.scripts]
-bharatpulse-mcp = "bharatpulse.server:main"
+bharatvitals-mcp = "bharatvitals.server:main"
 
 [project.urls]
-Homepage = "https://github.com/saketlab/bharatpulse"
+Homepage = "https://github.com/saketlab/bharatvitals"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["bharatpulse"]
+packages = ["bharatvitals"]
 
 [tool.pyright]
 venvPath = "."

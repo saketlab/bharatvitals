@@ -4,16 +4,22 @@ from typing import TYPE_CHECKING, Optional
 from fastmcp import FastMCP
 
 if TYPE_CHECKING:
-    from bharatpulse.client import BharatPulseClient
+    from bharatvitals.client import BharatVitalsClient
 
-_SOURCE = "mccd"
+SOURCE = "mccd"
+PACKAGE = "mccdindia"
+LABEL = "MCCD"
+GUIDE = (
+    "Cause-of-death, 36 states, 2008-2023, ICD-10 coded. Start with "
+    "mccd_list_chapters or mccd_list_causes, then mccd_query."
+)
 
 
 def _to_json(data: object) -> str:
     return json.dumps(data, indent=2)
 
 
-def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
+def register(mcp: FastMCP, client: "BharatVitalsClient") -> None:
 
     @mcp.tool()
     def mccd_list_states() -> str:
@@ -21,7 +27,7 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
 
         Includes "All States (Total)" national aggregate.
         """
-        return _to_json(client.get(_SOURCE, "/states", {}))
+        return _to_json(client.get(SOURCE, "/states", {}))
 
     @mcp.tool()
     def mccd_list_causes(pattern: Optional[str] = None) -> str:
@@ -31,7 +37,7 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
             pattern: Case-insensitive regex on Cause_Of_Death or ICD10_Code.
                      E.g. "heart", "I20", "malaria". Empty = all causes.
         """
-        return _to_json(client.get(_SOURCE, "/causes", {"pattern": pattern}))
+        return _to_json(client.get(SOURCE, "/causes", {"pattern": pattern}))
 
     @mcp.tool()
     def mccd_list_chapters(category: Optional[str] = None) -> str:
@@ -41,7 +47,7 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
             category: "Communicable", "NCD", "External", "Ill-defined",
                       or "Other". Empty = all chapters.
         """
-        return _to_json(client.get(_SOURCE, "/chapters", {"category": category}))
+        return _to_json(client.get(SOURCE, "/chapters", {"category": category}))
 
     @mcp.tool()
     def mccd_query(
@@ -69,7 +75,7 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
         """
         return _to_json(
             client.get(
-                _SOURCE,
+                SOURCE,
                 "/query",
                 {
                     "table": table,
@@ -103,7 +109,7 @@ def register(mcp: FastMCP, client: "BharatPulseClient") -> None:
         """
         return _to_json(
             client.get(
-                _SOURCE,
+                SOURCE,
                 "/categorize",
                 {
                     "table": table,

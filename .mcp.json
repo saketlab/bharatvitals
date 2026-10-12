@@ -1,8 +1,8 @@
 {
   "mcpServers": {
-    "bharatpulse": {
-      "command": "uvx",
-      "args": ["--from", "bharatpulse-mcp", "bharatpulse-mcp"]
+    "bharatvitals": {
+      "type": "http",
+      "url": "https://bharatvitals.saketlab.org/mcp"
     }
   }
 }
