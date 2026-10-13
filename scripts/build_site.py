@@ -15,12 +15,11 @@ from pathlib import Path
 import markdown
 from fastmcp import Client
 
-from bharatvitals.server import MODULES, mcp
+from bharatvitals.server import LABELS, SOURCES, mcp
 
 SITE = "https://bharatvitals.saketlab.org/"
 MCP_URL = SITE + "mcp"
 TITLE = "BharatVitals - India's health and demographic data over MCP"
-LABELS = [m.LABEL for m in MODULES]
 DESCRIPTION = (
     "A remote MCP server that lets Claude and other AI assistants query India's "
     f"official health and demographic statistics: {', '.join(LABELS[:-1])} and {LABELS[-1]}."
@@ -31,7 +30,6 @@ ASSETS = {
     "site/logo/logo.png": "site/logo/logo.png",  # README path, unchanged
     "site/logo/logo.svg": "logo.svg",
 }
-SOURCES = {m.SOURCE: m.LABEL for m in MODULES}
 
 STYLE = """
 :root { color-scheme: light dark; --fg:#1d1d1f; --bg:#fff; --muted:#6e6e73;
@@ -138,13 +136,31 @@ def _list_tools() -> list[tuple[str, str]]:
     return sorted(asyncio.run(go()))
 
 
+_TOKENS = (
+    ("hmis", "hmis"),
+    ("mccd", "mccd"),
+    ("census", "census"),
+    ("consumption", "consumption"),
+    ("healthsurvey", "healthsurvey"),
+    ("srs", "srs"),
+    ("crs", "crs"),
+)
+
+
+def _label_for(name: str) -> str:
+    """Map a tool name onto its source label, falling back to Diagnostics."""
+    lowered = name.lower()
+    for token, source in _TOKENS:
+        if token in lowered:
+            return SOURCES[source]
+    return "Diagnostics"
+
+
 def tools_html(tools: list[tuple[str, str]]) -> str:
     """One table per source, then the rest under Diagnostics: name and first docstring line."""
     groups: dict[str, list[tuple[str, str]]] = {}
     for name, desc in tools:
-        groups.setdefault(SOURCES.get(name.split("_", 1)[0], "Diagnostics"), []).append(
-            (name, desc)
-        )
+        groups.setdefault(_label_for(name), []).append((name, desc))
     parts = [f"<p>{len(tools)} tools:</p>"]
     for label in [*SOURCES.values(), "Diagnostics"]:
         rows = groups.get(label)

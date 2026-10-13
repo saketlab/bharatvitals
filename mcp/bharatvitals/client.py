@@ -15,6 +15,10 @@ _RETRY_AFTER = 60.0  # seconds before retrying a source that failed to start
 class _SourceServer:
     source_id: str
     pkg_name: str
+    # Path of the Plumber entry point inside the installed R package's `inst/`
+    # directory. Most packages ship `plumber/plumber.R`; the NSS survey
+    # packages ship `server/api.R` instead.
+    plumber_path: str = "plumber/plumber.R"
     _proc: Optional[subprocess.Popen] = field(default=None, repr=False)  # type: ignore[type-arg]
     _url: Optional[str] = field(default=None, repr=False)
     _http: Optional[httpx.Client] = field(default=None, repr=False)
@@ -26,13 +30,14 @@ class _SourceServer:
         if env_path and os.path.isfile(env_path):
             return env_path
 
+        if "/" in self.plumber_path:
+            subdir, fname = self.plumber_path.rsplit("/", 1)
+            expr = f"system.file('{subdir}', '{fname}', package='{self.pkg_name}')"
+        else:
+            expr = f"system.file('{self.plumber_path}', package='{self.pkg_name}')"
+
         result = subprocess.run(
-            [
-                "Rscript",
-                "--vanilla",
-                "-e",
-                f"cat(system.file('plumber', 'plumber.R', package='{self.pkg_name}'))",
-            ],
+            ["Rscript", "--vanilla", "-e", f"cat({expr})"],
             capture_output=True,
             text=True,
             timeout=15,
@@ -66,12 +71,13 @@ class _SourceServer:
     def _start(self) -> str:
         plumber_r = self._find_plumber_r()
         port = self._free_port()
+        script = os.path.basename(plumber_r)
         self._proc = subprocess.Popen(
             [
                 "Rscript",
                 "--vanilla",
                 "-e",
-                f"plumber::plumb('plumber.R')$run(host='127.0.0.1', port={port}, quiet=TRUE)",
+                f"plumber::plumb('{script}')$run(host='127.0.0.1', port={port}, quiet=TRUE)",
             ],
             cwd=os.path.dirname(plumber_r),
             stdout=subprocess.DEVNULL,
@@ -113,6 +119,19 @@ class _SourceServer:
             or f"BHARATVITALS_{self.source_id.upper()}_URL" in os.environ
         )
 
+    def _decode(self, resp: httpx.Response) -> Any:
+        if resp.is_error:
+            # R puts the reason for bad input in the body
+            raise RuntimeError(
+                f"{self.source_id} API returned HTTP {resp.status_code}: {resp.text[:500]}"
+            )
+        try:
+            return resp.json()
+        except ValueError as e:
+            raise RuntimeError(
+                f"{self.source_id} API returned non-JSON: {resp.text[:500]}"
+            ) from e
+
     def get(
         self,
         endpoint: str,
@@ -126,26 +145,50 @@ class _SourceServer:
             params=clean,
             timeout=timeout,
         )
-        if resp.is_error:
-            # R puts the reason for bad input in the body
-            raise RuntimeError(
-                f"{self.source_id} API returned HTTP {resp.status_code}: {resp.text[:500]}"
-            )
-        try:
-            return resp.json()
-        except ValueError as e:
-            raise RuntimeError(
-                f"{self.source_id} API returned non-JSON: {resp.text[:500]}"
-            ) from e
+        return self._decode(resp)
+
+    def post(
+        self,
+        endpoint: str,
+        json: Any,
+        timeout: Any = httpx.USE_CLIENT_DEFAULT,
+    ) -> Any:
+        url = self._resolve_url()
+        resp = self._http.post(  # type: ignore[union-attr]
+            f"{url}{endpoint}",
+            json=json,
+            timeout=timeout,
+        )
+        return self._decode(resp)
 
 
 class BharatVitalsClient:
-    def __init__(self, packages: dict[str, str]) -> None:
-        """packages: source id -> R package that ships its plumber.R."""
+    def __init__(
+        self,
+        packages: dict[str, str],
+        plumber_paths: Optional[dict[str, str]] = None,
+    ) -> None:
+        """packages: source id -> R package that ships its Plumber entry point.
+
+        plumber_paths: optional source id -> path of that entry point inside the
+        package's ``inst/`` directory (default ``plumber/plumber.R``).
+        """
+        paths = plumber_paths or {}
         self._servers: dict[str, _SourceServer] = {
-            sid: _SourceServer(source_id=sid, pkg_name=pkg)
+            sid: _SourceServer(
+                source_id=sid,
+                pkg_name=pkg,
+                plumber_path=paths.get(sid, "plumber/plumber.R"),
+            )
             for sid, pkg in packages.items()
         }
+
+    def _server(self, source: str) -> _SourceServer:
+        if source not in self._servers:
+            raise KeyError(
+                f"Unknown source '{source}'. Known: {', '.join(sorted(self._servers))}"
+            )
+        return self._servers[source]
 
     def get(
         self,
@@ -154,11 +197,16 @@ class BharatVitalsClient:
         params: dict[str, Any],
         timeout: Any = httpx.USE_CLIENT_DEFAULT,
     ) -> Any:
-        if source not in self._servers:
-            raise KeyError(
-                f"Unknown source '{source}'. Known: {', '.join(sorted(self._servers))}"
-            )
-        return self._servers[source].get(endpoint, params, timeout)
+        return self._server(source).get(endpoint, params, timeout)
+
+    def post(
+        self,
+        source: str,
+        endpoint: str,
+        json: Any,
+        timeout: Any = httpx.USE_CLIENT_DEFAULT,
+    ) -> Any:
+        return self._server(source).post(endpoint, json, timeout)
 
     def attempted(self, source: str) -> bool:
-        return self._servers[source].attempted
+        return self._server(source).attempted

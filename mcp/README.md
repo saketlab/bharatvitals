@@ -19,19 +19,27 @@ Each data source needs its R package installed. On first tool call the server au
 
 ```bash
 export BHARATVITALS_HMIS_URL=http://127.0.0.1:8765
-export BHARATVITALS_SRS_URL=http://127.0.0.1:8686
 export BHARATVITALS_MCCD_URL=http://127.0.0.1:8585
+export BHARATVITALS_SRS_URL=http://127.0.0.1:8686
 export BHARATVITALS_CRS_URL=http://127.0.0.1:8484
 export BHARATVITALS_CENSUS_URL=https://censusindia.saketlab.org/api
+export BHARATVITALS_CONSUMPTION_URL=http://127.0.0.1:8795
+export BHARATVITALS_HEALTHSURVEY_URL=http://127.0.0.1:8685
 ```
 
-`bharatvitals_health` probes `/health` on every source and reports each one
-separately; call it when a tool says an API is unreachable.
+The NSS survey packages ship their Plumber entry point at `inst/server/api.R`
+rather than `inst/plumber/plumber.R`; the client handles both.
+
+`api_health` probes `/health` on every source and reports each one separately;
+call it when a tool says an API is unreachable.
 
 ## Tools
 
-The server builds its tool list from `bharatvitals/tools/`. The site lists every tool,
-and [llms.txt](https://bharatvitals.saketlab.org/llms.txt) carries each one's parameters.
+The HMIS, MCCD, SRS, Census and survey tools are vendored verbatim from the
+`mcp_forall` project. The CRS tools and the SRS/CRS resources come from the
+`bharatvitals/tools/` modules. The site lists every tool, and
+[llms.txt](https://bharatvitals.saketlab.org/llms.txt) carries each one's
+parameters.
 
 ## MCP Resources
 

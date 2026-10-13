@@ -204,12 +204,15 @@ it.
 | SRS, Sample Registration System | Life tables, causes of death, birth, death and infant mortality rates, fertility | 36 states, 1970 onward |
 | CRS, Civil Registration System | Registered births, deaths, infant deaths and still births; registration completeness | States and 700+ districts, 2009-2023 |
 | Census of India | Population, literacy, workers, households by state, district and subdistrict; population projections | 1901-2011; projections to 2036 (states) and 2031 (districts) |
+| Household Consumption Survey | Household consumption expenditure, inequality, food and non-food shares | States and districts, 2022-23 and 2023-24 |
+| NSS Health Survey | Morbidity, immunisation and maternal/child health indicators | States and districts, 2022-23 |
 
 The figures come from published government tables, cleaned by the open R
 packages [hmisindia](https://hmisindia.saketlab.org),
 [srsindia](https://srsindia.saketlab.org),
-[censusindia](https://censusindia.saketlab.org), [mccdindia](https://mccindia.saketlab.org) and 
-[crsindia](https://crsindia.saketlab.org).
+[censusindia](https://censusindia.saketlab.org), [mccdindia](https://mccindia.saketlab.org),
+[crsindia](https://crsindia.saketlab.org), consumptionsurveyindia and
+healthsurveyindia.
 
 ## Example questions
 
@@ -221,9 +224,12 @@ packages [hmisindia](https://hmisindia.saketlab.org),
 
 ## Tools
 
-Each tool name starts with its source (`hmis_`, `mccd_`, `srs_`, `crs_`,
-`census_`). The `list_` tools return valid states, indicators, periods and table
-names, so the assistant can check its inputs before it queries.
+Most tool names start with their source (`hmis_`, `mccd_`, `srs_`, `crs_`,
+`census_`, `query_consumption`, `query_healthsurvey`). The `list_` tools return
+valid states, indicators, periods and table names, so the assistant can check
+its inputs before it queries. `api_health` probes every backend and
+`tool_guide` explains which tool to use. SRS and CRS also expose static lookup
+resources (`srs://` and `crs://`).
 
 <!-- tools -->
 

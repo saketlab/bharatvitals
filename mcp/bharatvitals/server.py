@@ -1,68 +1,66 @@
+"""bharatvitals MCP server entry point.
+
+Imports the vendored tool modules (each registers its tools on the shared
+``mcp`` instance in :mod:`bharatvitals.runtime`) and the extra modules under
+``bharatvitals.tools``, then exposes the MCP endpoint. The console script
+``bharatvitals-mcp`` points here, so ``main`` and ``mcp`` must stay importable.
+"""
+
+from __future__ import annotations
+
 import importlib
-import json
 import pkgutil
-import subprocess
-from concurrent.futures import ThreadPoolExecutor
 
-import httpx
-from fastmcp import FastMCP
+from starlette.responses import JSONResponse
 
-from bharatvitals import tools
-from bharatvitals.client import BharatVitalsClient
+from bharatvitals import tools as _tools
+from bharatvitals.runtime import (
+    LABELS,
+    MCP_HOST,
+    MCP_PORT,
+    MCP_TRANSPORT,
+    REQUEST_TIMEOUT_SECONDS,
+    SOURCES,
+    client,
+    mcp,
+)
 
-# each tools/<id>.py is a source; _-prefixed modules are helpers
+# Importing these registers the vendored tools on ``mcp``. The star-imports also
+# keep ``bharatvitals.server.query_hmis`` and friends working for callers/tests.
+from bharatvitals.tools.census import *  # noqa: F401,F403
+from bharatvitals.tools.hmis import *  # noqa: F401,F403
+from bharatvitals.tools.mccd import *  # noqa: F401,F403
+from bharatvitals.tools.meta import *  # noqa: F401,F403
+from bharatvitals.tools.srs import *  # noqa: F401,F403
+from bharatvitals.tools.surveys import *  # noqa: F401,F403
+
+# Discover every module under bharatvitals.tools. Vendored modules registered
+# their tools on import; the extras (crs, srs_resources) expose register().
 MODULES = tuple(
-    importlib.import_module(f"{tools.__name__}.{m.name}")
-    for m in sorted(pkgutil.iter_modules(tools.__path__), key=lambda m: m.name)
-    if not m.name.startswith("_")
+    importlib.import_module(f"{_tools.__name__}.{info.name}")
+    for info in sorted(pkgutil.iter_modules(_tools.__path__), key=lambda i: i.name)
+    if not info.name.startswith("_")
 )
-_SOURCES = tuple(m.SOURCE for m in MODULES)
-
-mcp = FastMCP(
-    "bharatvitals",
-    instructions=" ".join(
-        [
-            "India public health and demographic data.",
-            "Tools prefixed by source: " + ", ".join(f"{s}_*" for s in _SOURCES) + ".",
-            *(f"{m.LABEL}: {m.GUIDE}" for m in MODULES),
-            "If a tool reports an unreachable API, call bharatvitals_health.",
-        ]
-    ),
-)
-
-_client = BharatVitalsClient({m.SOURCE: m.PACKAGE for m in MODULES})
-
-for module in MODULES:
-    module.register(mcp, _client)
+for _module in MODULES:
+    _register = getattr(_module, "register", None)
+    if _register is not None:
+        _register(mcp, client)
 
 
-def _probe(source: str) -> object:
-    # ponytail: unprobed local sources stay down; health never launches R
-    if not _client.attempted(source):
-        return {"status": "not started; the first tool call starts it"}
-    try:
-        return _client.get(source, "/health", {}, timeout=10.0)
-    except (httpx.HTTPError, RuntimeError, OSError, subprocess.SubprocessError) as e:
-        return {"error": str(e)}
-
-
-@mcp.tool()
-def bharatvitals_health() -> str:
-    """Probe /health of every data API that is configured or has been called; one entry per source."""
-    with ThreadPoolExecutor(len(_SOURCES)) as pool:
-        return json.dumps(dict(zip(_SOURCES, pool.map(_probe, _SOURCES))))
+@mcp.custom_route("/health", methods=["GET"])
+async def _health(request):
+    """Liveness probe for supervisors and reverse proxies."""
+    return JSONResponse({"status": "ok", "package": "bharatvitals"})
 
 
 def main() -> None:
-    import os
-
-    transport = os.environ.get("MCP_TRANSPORT", "stdio")
-    if transport == "http":
-        host = os.environ.get("MCP_HOST", "127.0.0.1")
-        port = int(os.environ.get("MCP_PORT", "9000"))
-        mcp.run(transport="streamable-http", host=host, port=port)
+    """Entry point used by the ``bharatvitals-mcp`` console script."""
+    if MCP_TRANSPORT in ("http", "streamable-http"):
+        mcp.run(transport="streamable-http", host=MCP_HOST, port=MCP_PORT)
+    elif MCP_TRANSPORT == "stdio":
+        mcp.run(transport="stdio")
     else:
-        mcp.run()
+        raise ValueError('MCP_TRANSPORT must be "stdio" or "streamable-http"')
 
 
 if __name__ == "__main__":
