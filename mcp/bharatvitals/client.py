@@ -1,7 +1,11 @@
 import atexit
+import glob
 import os
+import secrets
+import shutil
 import socket
 import subprocess
+import tempfile
 import time
 from dataclasses import dataclass, field
 from typing import Any, Optional
@@ -24,11 +28,68 @@ class _SourceServer:
     _http: Optional[httpx.Client] = field(default=None, repr=False)
     _failed: Optional[tuple[float, str]] = field(default=None, repr=False)
 
-    def _find_plumber_r(self) -> str:
+    @staticmethod
+    def _find_rscript() -> str:
+        env_path = os.environ.get("BHARATVITALS_RSCRIPT", "").strip()
+        if env_path:
+            if os.path.isfile(env_path):
+                return os.path.abspath(env_path)
+            executable = shutil.which(env_path)
+            if executable:
+                return executable
+            raise FileNotFoundError(
+                f"Configured BHARATVITALS_RSCRIPT executable was not found: {env_path}"
+            )
+
+        executable = shutil.which("Rscript")
+        if executable:
+            return executable
+
+        candidates = []
+        r_home = os.environ.get("R_HOME")
+        if r_home:
+            candidates.extend(
+                (
+                    os.path.join(r_home, "bin", "Rscript.exe"),
+                    os.path.join(r_home, "bin", "x64", "Rscript.exe"),
+                )
+            )
+
+        if os.name == "nt":
+            for program_files in (
+                os.environ.get("ProgramW6432"),
+                os.environ.get("ProgramFiles"),
+                os.environ.get("ProgramFiles(x86)"),
+            ):
+                if program_files:
+                    candidates.extend(
+                        glob.glob(
+                            os.path.join(program_files, "R", "R-*", "bin", "Rscript.exe")
+                        )
+                    )
+                    candidates.extend(
+                        glob.glob(
+                            os.path.join(
+                                program_files, "R", "R-*", "bin", "x64", "Rscript.exe"
+                            )
+                        )
+                    )
+
+        for candidate in sorted(set(candidates), reverse=True):
+            if os.path.isfile(candidate):
+                return candidate
+
+        raise FileNotFoundError(
+            "Rscript.exe was not found. Install R and add its bin directory to PATH, "
+            "or set BHARATVITALS_RSCRIPT to the full path of Rscript.exe."
+        )
+
+    def _find_plumber_r(self, rscript: Optional[str] = None) -> str:
         env_key = f"BHARATVITALS_{self.source_id.upper()}_PLUMBER_R"
         env_path = os.environ.get(env_key)
         if env_path and os.path.isfile(env_path):
             return env_path
+        rscript = rscript or self._find_rscript()
 
         if "/" in self.plumber_path:
             subdir, fname = self.plumber_path.rsplit("/", 1)
@@ -37,7 +98,7 @@ class _SourceServer:
             expr = f"system.file('{self.plumber_path}', package='{self.pkg_name}')"
 
         result = subprocess.run(
-            ["Rscript", "--vanilla", "-e", f"cat({expr})"],
+            [rscript, "--vanilla", "-e", f"cat({expr})"],
             capture_output=True,
             text=True,
             timeout=15,
@@ -53,14 +114,26 @@ class _SourceServer:
 
     @staticmethod
     def _free_port() -> int:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind(("127.0.0.1", 0))
-            return s.getsockname()[1]
+        for _ in range(100):
+            port = secrets.randbelow(49151 - 1024 + 1) + 1024
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    s.bind(("127.0.0.1", port))
+                return port
+            except OSError:
+                continue
+        raise OSError("Could not find a free local port in Plumber's supported range.")
 
     @staticmethod
-    def _wait_healthy(url: str, timeout: float = 45.0) -> bool:
+    def _wait_healthy(
+        url: str,
+        timeout: float = 45.0,
+        process: Optional[subprocess.Popen] = None,  # type: ignore[type-arg]
+    ) -> bool:
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
+            if process is not None and process.poll() is not None:
+                return False
             try:
                 httpx.get(f"{url}/health", timeout=2.0)
                 return True
@@ -69,38 +142,48 @@ class _SourceServer:
         return False
 
     def _start(self) -> str:
-        plumber_r = self._find_plumber_r()
+        rscript = self._find_rscript()
+        plumber_r = self._find_plumber_r(rscript)
         port = self._free_port()
         script = os.path.basename(plumber_r)
-        self._proc = subprocess.Popen(
-            [
-                "Rscript",
-                "--vanilla",
-                "-e",
-                f"plumber::plumb('{script}')$run(host='127.0.0.1', port={port}, quiet=TRUE)",
-            ],
-            cwd=os.path.dirname(plumber_r),
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        atexit.register(self._proc.terminate)
-        url = f"http://127.0.0.1:{port}"
-        if not self._wait_healthy(url):
-            self._proc.terminate()
-            raise RuntimeError(
-                f"Source '{self.source_id}' plumber API did not start within 45 s "
-                f"(package: {self.pkg_name})."
+        with tempfile.TemporaryFile(mode="w+t", encoding="utf-8") as startup_log:
+            self._proc = subprocess.Popen(
+                [
+                    rscript,
+                    "--vanilla",
+                    "-e",
+                    f"plumber::plumb('{script}')$run(host='127.0.0.1', port={port}, quiet=TRUE)",
+                ],
+                cwd=os.path.dirname(plumber_r),
+                stdout=startup_log,
+                stderr=subprocess.STDOUT,
             )
+            atexit.register(self._proc.terminate)
+            url = f"http://127.0.0.1:{port}"
+            if not self._wait_healthy(url, process=self._proc):
+                if self._proc.poll() is None:
+                    self._proc.terminate()
+                    self._proc.wait()
+                startup_log.seek(0)
+                details = startup_log.read().strip()
+                message = (
+                    f"Source '{self.source_id}' plumber API did not become healthy within "
+                    f"45 s (package: {self.pkg_name}, exit code: {self._proc.returncode})."
+                )
+                if details:
+                    message += f" Rscript output: {details[-2000:]}"
+                raise RuntimeError(message)
         return url
 
     def _resolve_url(self) -> str:
         if self._url is not None:
             return self._url
-        if self._failed and time.monotonic() - self._failed[0] < _RETRY_AFTER:
-            raise RuntimeError(self._failed[1])
         env_url = os.environ.get(f"BHARATVITALS_{self.source_id.upper()}_URL")
+        if not env_url and self._failed and time.monotonic() - self._failed[0] < _RETRY_AFTER:
+            raise RuntimeError(self._failed[1])
         try:
             self._url = env_url.rstrip("/") if env_url else self._start()
+            self._failed = None
         except (OSError, RuntimeError, subprocess.SubprocessError) as e:
             # a failed start costs up to 60 s; don't repeat it on every call
             self._failed = (time.monotonic(), str(e))

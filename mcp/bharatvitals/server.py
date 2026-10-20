@@ -16,8 +16,11 @@ from starlette.responses import JSONResponse
 from bharatvitals import tools as _tools
 from bharatvitals.runtime import (
     LABELS,
+    MCP_ALLOWED_HOSTS,
     MCP_HOST,
+    MCP_PATH,
     MCP_PORT,
+    MCP_STATELESS_HTTP,
     MCP_TRANSPORT,
     REQUEST_TIMEOUT_SECONDS,
     SOURCES,
@@ -56,7 +59,17 @@ async def _health(request):
 def main() -> None:
     """Entry point used by the ``bharatvitals-mcp`` console script."""
     if MCP_TRANSPORT in ("http", "streamable-http"):
-        mcp.run(transport="streamable-http", host=MCP_HOST, port=MCP_PORT)
+        try:
+            mcp.run(
+                transport="streamable-http",
+                host=MCP_HOST,
+                port=MCP_PORT,
+                path=MCP_PATH,
+                stateless_http=MCP_STATELESS_HTTP,
+                allowed_hosts=MCP_ALLOWED_HOSTS or None,
+            )
+        except TypeError:
+            mcp.run(transport="streamable-http", host=MCP_HOST, port=MCP_PORT)
     elif MCP_TRANSPORT == "stdio":
         mcp.run(transport="stdio")
     else:

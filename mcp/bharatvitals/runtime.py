@@ -40,6 +40,24 @@ REQUEST_TIMEOUT_SECONDS = int(os.environ.get("REQUEST_TIMEOUT_SECONDS", "30"))
 MCP_TRANSPORT = os.environ.get("MCP_TRANSPORT", "stdio").strip().lower()
 MCP_HOST = os.environ.get("MCP_HOST", "127.0.0.1")
 MCP_PORT = int(os.environ.get("MCP_PORT", "9000"))
+MCP_PATH = os.environ.get("MCP_PATH", "/mcp").strip() or "/mcp"
+
+
+def _env_flag(name: str, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in ("1", "true", "yes", "on")
+
+
+MCP_STATELESS_HTTP = _env_flag("MCP_STATELESS_HTTP", True)
+MCP_ALLOWED_HOSTS = [
+    item.strip()
+    for item in os.environ.get(
+        "MCP_ALLOWED_HOSTS", "127.0.0.1:*,localhost:*,[::1]:*"
+    ).split(",")
+    if item.strip()
+]
 
 mcp = FastMCP(
     "bharatvitals",

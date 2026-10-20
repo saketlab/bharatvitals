@@ -33,6 +33,11 @@ def register(mcp: FastMCP, client: "BharatVitalsClient") -> None:
         return _to_json(client.get(SOURCE, "/tables", {}))
 
     @mcp.tool()
+    def crs_health() -> str:
+        """Health check for the crsindia REST API."""
+        return _to_json(client.get(SOURCE, "/health", {}))
+
+    @mcp.tool()
     def crs_list_states() -> str:
         """List all 36 canonical state/UT names in CRS data."""
         return _to_json(client.get(SOURCE, "/states", {}))
