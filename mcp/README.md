@@ -1,7 +1,7 @@
 # bharatvitals-mcp
 
 MCP server that makes India's public health and demographic datasets queryable
-from AI assistants. The hosted server is at `https://bharatvitals.saketlab.org/mcp`;
+from AI assistants. The hosted server is at `https://bharatvitals.in/mcp`;
 see the [top-level README](../README.md) for client setup.
 
 ## Run from a checkout
@@ -31,7 +31,7 @@ separately; call it when a tool says an API is unreachable.
 ## Tools
 
 The server builds its tool list from `bharatvitals/tools/`. The site lists every tool,
-and [llms.txt](https://bharatvitals.saketlab.org/llms.txt) carries each one's parameters.
+and [llms.txt](https://bharatvitals.in/llms.txt) carries each one's parameters.
 
 ## MCP Resources
 

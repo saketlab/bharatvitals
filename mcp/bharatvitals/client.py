@@ -8,7 +8,7 @@ from typing import Any, Optional
 
 import httpx
 
-_RETRY_AFTER = 60.0  # seconds before retrying a source that failed to start
+_RETRY_AFTER = 60.0  # seconds
 
 
 @dataclass
@@ -96,7 +96,7 @@ class _SourceServer:
         try:
             self._url = env_url.rstrip("/") if env_url else self._start()
         except (OSError, RuntimeError, subprocess.SubprocessError) as e:
-            # a failed start costs up to 60 s; don't repeat it on every call
+            # don't repeat a slow failed start on every call
             self._failed = (time.monotonic(), str(e))
             raise
         http = httpx.Client(timeout=120.0, headers={"X-Client": "mcp/bharatvitals"})

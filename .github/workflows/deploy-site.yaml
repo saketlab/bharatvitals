@@ -88,7 +88,7 @@ jobs:
           script_stop: true
           script: |
             set -euo pipefail
-            # the vhost replaces the catch-all, so refuse it until the files are there
+            # vhost replaces the catch-all; needs the files first
             test -s "$SITE_ROOT/index.html" || { echo "$SITE_ROOT/index.html missing" >&2; exit 1; }
 
             conf=/etc/nginx/conf.d/bharatvitals-site.conf
@@ -106,10 +106,10 @@ jobs:
             sleep 1
             for path in / /llms.txt; do
               code=$(curl -sk -o /dev/null -w '%{http_code}' \
-                       -H 'Host: bharatvitals.saketlab.org' "https://127.0.0.1$path" || true)
+                       -H 'Host: bharatvitals.in' "https://127.0.0.1$path" || true)
               test "$code" = "200" || { echo "$path answered $code" >&2; exit 1; }
             done
             code=$(curl -sk -o /dev/null -m 5 -w '%{http_code}' -X POST \
-                     -H 'Host: bharatvitals.saketlab.org' -H 'Accept: application/json, text/event-stream' \
+                     -H 'Host: bharatvitals.in' -H 'Accept: application/json, text/event-stream' \
                      https://127.0.0.1/mcp || true)
             case "$code" in 200|400|406) echo "site and /mcp deployed" ;; *) echo "/mcp answered $code" >&2; exit 1 ;; esac

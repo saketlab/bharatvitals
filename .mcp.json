@@ -2,7 +2,7 @@
   "mcpServers": {
     "bharatvitals": {
       "type": "http",
-      "url": "https://bharatvitals.saketlab.org/mcp"
+      "url": "https://bharatvitals.in/mcp"
     }
   }
 }
