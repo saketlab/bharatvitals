@@ -1,122 +1,154 @@
-import json
-from typing import TYPE_CHECKING, Optional
+"""Vendored mcp_forall tools (this module registers them on import)."""
 
-from fastmcp import FastMCP
+from __future__ import annotations
 
-if TYPE_CHECKING:
-    from bharatvitals.client import BharatVitalsClient
-
-SOURCE = "mccd"
-PACKAGE = "mccdindia"
-LABEL = "MCCD"
-GUIDE = (
-    "Cause-of-death, 36 states, 2008-2023, ICD-10 coded. Start with "
-    "mccd_list_chapters or mccd_list_causes, then mccd_query."
+from bharatvitals.runtime import (
+    CRS_API_URL,
+    CENSUS_API_URL,
+    HMIS_API_URL,
+    MCCD_API_URL,
+    SRS_API_URL,
+    _request_json,
+    _string_params,
+    mcp,
 )
 
 
-def _to_json(data: object) -> str:
-    return json.dumps(data, indent=2)
+MCCD_VALID_TABLES = {
+    "deaths", "deaths_pct", "cause", "age", "subcause",
+    "state_subcause", "state_age_pct", "trend", "trend_pct",
+    "age_pct", "age_over_pct",
+}
 
 
-def register(mcp: FastMCP, client: "BharatVitalsClient") -> None:
+@mcp.tool()
+def query_mccd(
+    table: str = "deaths",
+    cause: str | None = None,
+    state: str | None = None,
+    year: str | None = None,
+    sex: str | None = None,
+) -> dict:
+    """Use for cause-of-death analysis: what people died from, ICD-10 codes,
+    and epidemiological category breakdowns (Communicable, NCD, External,
+    Ill-defined). Data covers medically certified deaths across Indian
+    states and years.
 
-    @mcp.tool()
-    def mccd_list_states() -> str:
-        """List all 37 canonical state/UT names in MCCD data.
+    NOT for health system indicators, facility data, or testing coverage —
+    use query_hmis.
 
-        Includes "All States (Total)" national aggregate.
-        """
-        return _to_json(client.get(SOURCE, "/states", {}))
+    Filter by:
 
-    @mcp.tool()
-    def mccd_list_causes(pattern: Optional[str] = None) -> str:
-        """Search MCCD cause-of-death entries.
+    - table: which data table to query. One of: deaths (state-wise death
+      counts), deaths_pct (state-wise death percentages), cause (deaths by
+      major cause), age (age-disaggregated deaths), subcause (detailed
+      sub-cause deaths), state_subcause (state+age disaggregated),
+      state_age_pct, trend (multi-year trends), trend_pct, age_pct,
+      age_over_pct. Default: "deaths".
+    - cause: regex filter on Cause_Of_Death or ICD-10 code, e.g. "I20"
+      or "coronary". Applied server-side.
+    - state: comma-separated state names, e.g. "Kerala, Tamil Nadu".
+    - year: year filter. Accepts "2020", "2015,2016,2017", or "2015:2020".
+    - sex: one of "T" (total), "M" (male), "F" (female).
 
-        Args:
-            pattern: Case-insensitive regex on Cause_Of_Death or ICD10_Code.
-                     E.g. "heart", "I20", "malaria". Empty = all causes.
-        """
-        return _to_json(client.get(SOURCE, "/causes", {"pattern": pattern}))
+    Returns {"count": ..., "rows": [...]}.
 
-    @mcp.tool()
-    def mccd_list_chapters(category: Optional[str] = None) -> str:
-        """ICD-10 chapters with epidemiological categories.
-
-        Args:
-            category: "Communicable", "NCD", "External", "Ill-defined",
-                      or "Other". Empty = all chapters.
-        """
-        return _to_json(client.get(SOURCE, "/chapters", {"category": category}))
-
-    @mcp.tool()
-    def mccd_query(
-        table: str = "deaths",
-        cause: Optional[str] = None,
-        state: Optional[str] = None,
-        year: Optional[str] = None,
-        sex: Optional[str] = None,
-    ) -> str:
-        """Query MCCD cause-of-death data (36 states, 2008-2023, ICD-10 coded).
-
-        Args:
-            table: "deaths" (state-wise counts, Table 2),
-                   "deaths_pct" (state-wise percentages, Table 3),
-                   "cause" (by major cause/ICD chapter, Table 4),
-                   "age" (India-level age-disaggregated, Table 5),
-                   "subcause" (India-level detailed sub-cause, Table 6),
-                   "state_subcause" (state + age disaggregated, Table 7).
-            cause: Regex on Cause_Of_Death or ICD10_Code, e.g. "I20", "coronary".
-                   Only for cause/subcause/state_subcause tables.
-            state: Comma-separated state names, e.g. "Kerala,Tamil Nadu".
-                   "All States (Total)" or "India" for national aggregate.
-            year: Comma-separated years or range, e.g. "2015,2016" or "2015:2020".
-            sex: "T" (total), "M" (male), or "F" (female).
-        """
-        return _to_json(
-            client.get(
-                SOURCE,
-                "/query",
-                {
-                    "table": table,
-                    "cause": cause,
-                    "state": state,
-                    "year": year,
-                    "sex": sex,
-                },
-            )
+    For health system indicators (facility counts, testing, vaccinations,
+    staffing, service coverage), use query_hmis instead.
+    """
+    if table not in MCCD_VALID_TABLES:
+        raise ValueError(
+            f"table must be one of: {', '.join(sorted(MCCD_VALID_TABLES))}"
         )
+    if sex is not None:
+        sex = sex.strip().upper()
+        if sex not in ("T", "M", "F"):
+            raise ValueError('sex must be one of "T", "M", or "F"')
 
-    @mcp.tool()
-    def mccd_categorize(
-        table: str = "cause",
-        cause: Optional[str] = None,
-        state: Optional[str] = None,
-        year: Optional[str] = None,
-        sex: Optional[str] = None,
-    ) -> str:
-        """Like mccd_query but adds epidemiological category columns.
+    params: dict[str, str] = {"table": table}
+    if cause:
+        params["cause"] = cause
+    if state:
+        params["state"] = state
+    if year:
+        params["year"] = year
+    if sex:
+        params["sex"] = sex
 
-        Joins with ICD-10 chapter metadata to add "category"
-        (Communicable/NCD/External/Ill-defined/Other) and "subcategory".
+    return _request_json("mccdindia", MCCD_API_URL, "GET", "query", params=params)
 
-        Args:
-            table: "cause", "subcause", or "state_subcause".
-            cause: Regex on Cause_Of_Death or ICD10_Code.
-            state: Comma-separated state names.
-            year: Comma-separated years or range.
-            sex: "T", "M", or "F".
-        """
-        return _to_json(
-            client.get(
-                SOURCE,
-                "/categorize",
-                {
-                    "table": table,
-                    "cause": cause,
-                    "state": state,
-                    "year": year,
-                    "sex": sex,
-                },
-            )
+
+MCCD_CAUSE_TABLES = {"cause", "subcause", "state_subcause"}
+MCCD_CATEGORIES = {"Communicable", "NCD", "External", "Ill-defined", "Other"}
+
+
+@mcp.tool()
+def mccd_health() -> dict:
+    """Health check for the mccdindia REST API."""
+    return _request_json("mccdindia", MCCD_API_URL, "GET", "health")
+
+
+@mcp.tool()
+def mccd_list_states() -> dict:
+    """List the states available in the MCCD datasets."""
+    return _request_json("mccdindia", MCCD_API_URL, "GET", "states")
+
+
+@mcp.tool()
+def mccd_causes(pattern: str = "") -> dict:
+    """Search MCCD causes of death by regex against Cause_Of_Death or ICD-10 code.
+
+    Use before query_mccd to find valid cause names or codes (e.g. "I20",
+    "coronary", "Septicaemia").
+    """
+    params: dict[str, str] = {"pattern": pattern}
+    return _request_json("mccdindia", MCCD_API_URL, "GET", "causes", params=params)
+
+
+@mcp.tool()
+def mccd_chapters(category: str = "") -> dict:
+    """List ICD-10 chapters, optionally filtered by epidemiological category.
+
+    category: Communicable, NCD, External, Ill-defined, or Other.
+    """
+    if category and category not in MCCD_CATEGORIES:
+        raise ValueError(
+            "category must be one of: " + ", ".join(sorted(MCCD_CATEGORIES))
         )
+    params: dict[str, str] = {"category": category}
+    return _request_json("mccdindia", MCCD_API_URL, "GET", "chapters", params=params)
+
+
+@mcp.tool()
+def mccd_categorize(
+    table: str = "cause",
+    cause: str | None = None,
+    state: str | None = None,
+    year: str | None = None,
+    sex: str | None = None,
+) -> dict:
+    """Return MCCD deaths classified into epidemiological categories.
+
+    Same filters as query_mccd but result rows are categorized into
+    Communicable, NCD, External, Ill-defined. table must be one of
+    cause, subcause, state_subcause.
+    """
+    if table not in MCCD_CAUSE_TABLES:
+        raise ValueError(
+            f"table for categorize must be one of: {', '.join(sorted(MCCD_CAUSE_TABLES))}"
+        )
+    if sex is not None:
+        sex = sex.strip().upper()
+        if sex not in ("T", "M", "F"):
+            raise ValueError('sex must be one of "T", "M", or "F"')
+    params: dict[str, str] = {"table": table}
+    if cause:
+        params["cause"] = cause
+    if state:
+        params["state"] = state
+    if year:
+        params["year"] = year
+    if sex:
+        params["sex"] = sex
+    return _request_json("mccdindia", MCCD_API_URL, "GET", "categorize", params=params)
+
