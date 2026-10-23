@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 from bharatvitals.runtime import (
-    CONSUMPTION_API_URL,
     CRS_API_URL,
     CENSUS_API_URL,
-    HEALTHSURVEY_API_URL,
     HMIS_API_URL,
     MCCD_API_URL,
     SRS_API_URL,
@@ -228,5 +226,4 @@ def srs_arriaga_decompose(
         "sex": sex,
     }
     return _request_json("srsindia", SRS_API_URL, "GET", "arriaga", params=params)
-
 

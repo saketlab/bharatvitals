@@ -21,12 +21,6 @@ from bharatvitals.client import BharatVitalsClient
 # the real endpoint and honours ``BHARATVITALS_<SOURCE>_URL`` overrides.
 HMIS_API_URL = os.environ.get("BHARATVITALS_HMIS_URL", "http://127.0.0.1:8765")
 MCCD_API_URL = os.environ.get("BHARATVITALS_MCCD_URL", "http://127.0.0.1:8585")
-CONSUMPTION_API_URL = os.environ.get(
-    "BHARATVITALS_CONSUMPTION_URL", "http://127.0.0.1:8795"
-)
-HEALTHSURVEY_API_URL = os.environ.get(
-    "BHARATVITALS_HEALTHSURVEY_URL", "http://127.0.0.1:8685"
-)
 SRS_API_URL = os.environ.get("BHARATVITALS_SRS_URL", "http://127.0.0.1:8686")
 CENSUS_API_URL = os.environ.get("BHARATVITALS_CENSUS_URL", "http://127.0.0.1:8895")
 CRS_API_URL = os.environ.get("BHARATVITALS_CRS_URL", "http://127.0.0.1:8484")
@@ -62,10 +56,9 @@ MCP_ALLOWED_HOSTS = [
 mcp = FastMCP(
     "bharatvitals",
     instructions=(
-        "India health, mortality and survey data. Tools proxy auto-starting R "
-        "Plumber APIs for HMIS, MCCD, Census of India, SRS, CRS and the NSS "
-        "consumption and health surveys. Call api_health to probe backends and "
-        "tool_guide to choose a tool."
+        "India health, mortality and demographic data. Tools proxy auto-starting "
+        "R Plumber APIs for HMIS, MCCD, Census of India, SRS and CRS. Call "
+        "api_health to probe backends and tool_guide to choose a tool."
     ),
 )
 
@@ -76,46 +69,31 @@ SOURCE_LABELS = {
     "srs": "SRS",
     "crs": "CRS",
     "census": "Census of India",
-    "consumption": "Household Consumption Survey",
-    "healthsurvey": "NSS Health Survey",
 }
 
-# Source id -> R package that ships the Plumber entry point, and the few
-# packages whose entry point is not the conventional plumber/plumber.R.
+# Source id -> R package that ships the Plumber entry point.
 PACKAGES = {
     "hmis": "hmisindia",
     "mccd": "mccdindia",
     "srs": "srsindia",
     "crs": "crsindia",
     "census": "censusindia",
-    "consumption": "consumptionsurveyindia",
-    "healthsurvey": "healthsurveyindia",
-}
-PLUMBER_PATHS = {
-    "consumption": "server/api.R",
-    "healthsurvey": "server/api.R",
 }
 
-client = BharatVitalsClient(PACKAGES, PLUMBER_PATHS)
+client = BharatVitalsClient(PACKAGES)
 
 # Exposed for scripts/build_site.py and re-exported by bharatvitals.server.
 SOURCES = SOURCE_LABELS
 LABELS = list(SOURCE_LABELS.values())
 
 
-# Maps the api_name used by the vendored mcp_forall tool bodies onto a
-# bharatvitals source id (see PACKAGES). Both the descriptive survey names and
-# the backend hostnames are accepted.
+# Maps the api_name used by tool bodies onto a bharatvitals source id.
 _SOURCE_BY_API = {
     "hmisindia": "hmis",
     "mccdindia": "mccd",
     "censusindia": "census",
     "srsindia": "srs",
     "crsindia": "crs",
-    "consumptionsurveyindia": "consumption",
-    "consumption survey": "consumption",
-    "healthsurveyindia": "healthsurvey",
-    "health survey": "healthsurvey",
 }
 
 
@@ -152,5 +130,3 @@ def _request_json(api_name: str, base_url: str, method: str, path: str,
 
 def _string_params(params: dict | None) -> dict[str, str] | None:
     return {key: str(value) for key, value in (params or {}).items() if value is not None}
-
-

@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 from bharatvitals.runtime import (
-    CONSUMPTION_API_URL,
     CRS_API_URL,
     CENSUS_API_URL,
-    HEALTHSURVEY_API_URL,
     HMIS_API_URL,
     MCCD_API_URL,
     SRS_API_URL,
@@ -153,5 +151,4 @@ def mccd_categorize(
     if sex:
         params["sex"] = sex
     return _request_json("mccdindia", MCCD_API_URL, "GET", "categorize", params=params)
-
 

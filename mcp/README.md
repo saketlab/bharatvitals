@@ -35,13 +35,10 @@ export BHARATVITALS_MCCD_URL=http://127.0.0.1:8585
 export BHARATVITALS_SRS_URL=http://127.0.0.1:8686
 export BHARATVITALS_CRS_URL=http://127.0.0.1:8484
 export BHARATVITALS_CENSUS_URL=http://127.0.0.1:8895
-export BHARATVITALS_CONSUMPTION_URL=http://127.0.0.1:8795
-export BHARATVITALS_HEALTHSURVEY_URL=http://127.0.0.1:8685
 ```
 
-The first five URLs mirror the ports pinned in
-`.github/services/bharatvitals-mcp.service`; the two survey defaults are the
-client's own. Override any of them to use your own instance. A remote base
+The URLs mirror the ports pinned in `.github/services/bharatvitals-mcp.service`.
+Override any of them to use your own instance. A remote base
 URL must be the API root (for example, the Census API base URL ends in
 `/api`). A source that fails to auto-start is not retried for 60 seconds.
 
@@ -58,19 +55,16 @@ $env:BHARATVITALS_RSCRIPT = 'C:\Program Files\R\R-4.6.1\bin\Rscript.exe'
 `BHARATVITALS_CRS_PLUMBER_R`) overrides the discovered Plumber entry file for
 one source.
 
-The NSS survey packages ship their Plumber entry point at `inst/server/api.R`
-rather than `inst/plumber/plumber.R`; the client handles both.
-
 `api_health` probes `/health` on every source and reports each one separately;
 call it when a tool says an API is unreachable.
 
 ## Tools
 
-61 tools and 6 MCP resources. The HMIS, MCCD, SRS, Census and survey tools
-are vendored from the `mcp_forall` project; the CRS tools and the SRS/CRS
-resources come from the `bharatvitals/tools/` modules. Every tool routes
-through `bharatvitals.runtime.client` (a `BharatVitalsClient`), so tests mock
-that boundary. The site lists every tool, and
+59 tools and 6 MCP resources. The HMIS, MCCD, SRS and Census tools are
+vendored from the `mcp_forall` project; the CRS tools and the SRS/CRS resources
+come from the `bharatvitals/tools/` modules. Every tool routes through
+`bharatvitals.runtime.client` (a `BharatVitalsClient`), so tests mock that
+boundary. The site lists every tool, and
 [llms.txt](https://bharatvitals.saketlab.org/llms.txt) carries each one's
 parameters.
 

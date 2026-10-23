@@ -10,8 +10,7 @@ and demographic statistics through the
 [Model Context Protocol](https://modelcontextprotocol.io) (MCP). It allows
 you to ask questions in plain language, and the assistant looks up the
 published figures: health-service indicators, causes of death, life tables,
-registered births and deaths, the Census, and the NSS consumption and health
-surveys.
+registered births and deaths, and Census population and demographic statistics.
 
 ## Quick setup
 
@@ -206,16 +205,13 @@ it.
 | SRS, Sample Registration System | Life tables, causes of death, birth, death and infant mortality rates, fertility | 36 states; bulletin series 1997-2024, life tables and cause-of-death series 2007-2024 |
 | CRS, Civil Registration System | Registered births, deaths, infant deaths and still births; registration completeness | States and 700+ districts, 2009-2023 |
 | Census of India | Population, literacy, workers, households by state, district and subdistrict; population projections | 1901-2011; projections to 2036 (states) and 2031 (districts) |
-| Household Consumption Survey | Household consumption expenditure, inequality, food and non-food shares | States and districts, 2022-23 and 2023-24 |
-| NSS Health Survey | Morbidity, immunisation and maternal/child health indicators | States and districts, 2022-23 |
 
 The figures come from published government tables, cleaned by the open R
 packages [hmisindia](https://hmisindia.saketlab.org),
 [srsindia](https://srsindia.saketlab.org),
 [censusindia](https://censusindia.saketlab.org),
 [mccdindia](https://mccdindia.saketlab.org),
-[crsindia](https://crsindia.saketlab.org), consumptionsurveyindia and
-healthsurveyindia.
+[crsindia](https://crsindia.saketlab.org).
 
 ## Example questions
 
@@ -227,7 +223,7 @@ healthsurveyindia.
 
 ## Tools
 
-The server registers 61 tools, grouped by source:
+The server registers 59 tools, grouped by source:
 
 | Group | Count | Highlights |
 |-------|-------|------------|
@@ -236,13 +232,12 @@ The server registers 61 tools, grouped by source:
 | Census of India | 8 | `census_query`, `census_population`, `census_population_projection` |
 | SRS | 18 | `srs_query_life_table`, `srs_query_cod`, `srs_arriaga_decompose` |
 | CRS | 18 | `crs_births`, `crs_deaths`, `crs_vital_rates`, `crs_adjusted_events` |
-| NSS surveys | 2 | `query_consumption`, `query_healthsurvey` (both accept read-only SQL) |
 | Diagnostics | 2 | `api_health`, `tool_guide` |
 
 The `list_` tools return valid states, indicators, periods and table names,
 so the assistant can check its inputs before it queries. `api_health` probes
-every backend and `tool_guide` explains which tool to use. SRS and CRS also
-expose six read-only MCP resources: `srs://states`,
+each of the five backends and `tool_guide` explains which tool to use. SRS and
+CRS also expose six read-only MCP resources: `srs://states`,
 `srs://life_table_periods`, `srs://cod_tables`, `srs://bulletin_indicators`,
 `crs://states` and `crs://tables`.
 
@@ -260,8 +255,7 @@ bharatvitals-mcp (Python, FastMCP)        mcp/bharatvitals/
         |  httpx
         v
 R Plumber REST API per data source        hmisindia, mccdindia, srsindia,
-        |                                 crsindia, censusindia, and the two
-        v                                 NSS survey packages
+        |                                 crsindia and censusindia
 Parquet / Arrow / DuckDB / CSV
 ```
 
@@ -304,8 +298,6 @@ All settings are environment variables, read at startup:
 | `BHARATVITALS_SRS_URL` | `http://127.0.0.1:8686` | Same for SRS |
 | `BHARATVITALS_CRS_URL` | `http://127.0.0.1:8484` | Same for CRS |
 | `BHARATVITALS_CENSUS_URL` | `http://127.0.0.1:8895` | Same for Census (a remote base URL ends in `/api`) |
-| `BHARATVITALS_CONSUMPTION_URL` | `http://127.0.0.1:8795` | Same for the NSS consumption survey |
-| `BHARATVITALS_HEALTHSURVEY_URL` | `http://127.0.0.1:8685` | Same for the NSS health survey |
 | `BHARATVITALS_RSCRIPT` | *(unset)* | Full path to `Rscript` for a non-standard R install |
 | `BHARATVITALS_<SOURCE>_PLUMBER_R` | *(unset)* | Full path to one source's Plumber entry file, skipping R package discovery |
 
@@ -330,7 +322,7 @@ Neither suite needs R or a running backend.
 ## Troubleshooting
 
 - **A tool reports that a backend is unavailable.** Call `api_health`; it
-  probes `/health` on each of the seven backends and reports them
+  probes `/health` on each of the five backends and reports them
   individually. A source that failed to auto-start is not retried for 60
   seconds.
 - **`Rscript.exe was not found`.** Install R and add its `bin` directory to
@@ -362,8 +354,7 @@ landing page (built from this README plus the server's live tool list;
 `docs/` is gitignored build output), and proxies `/mcp` to the local server
 on port 9000. The systemd unit runs the server with `MCP_TRANSPORT=http` and
 pins the HMIS, MCCD, SRS, CRS and Census backends to locally running R APIs
-via `BHARATVITALS_*_URL`; the two NSS survey APIs are auto-started on demand
-by the server itself.
+via `BHARATVITALS_*_URL`.
 
 ## Issues
 

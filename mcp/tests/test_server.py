@@ -14,52 +14,7 @@ from unittest.mock import Mock, patch
 from bharatvitals import server
 
 
-class SurveyToolTests(unittest.TestCase):
-    @patch("bharatvitals.runtime.client")
-    def test_consumption_forwards_operation_params_and_envelope(self, client):
-        client.get.return_value = {"shares": [{"round": "HCES"}]}
-
-        result = server.query_consumption(
-            "food_group_shares", {"by": "round", "round": 68}
-        )
-
-        self.assertEqual(result, {"shares": [{"round": "HCES"}]})
-        client.get.assert_called_once_with(
-            "consumption",
-            "/shares/food-group",
-            {"by": "round", "round": "68"},
-            timeout=server.REQUEST_TIMEOUT_SECONDS,
-        )
-
-    @patch("bharatvitals.runtime.client")
-    def test_healthsurvey_sql_forwards_json(self, client):
-        client.post.return_value = {"rows": [{"n": 1}], "n_rows": 1}
-
-        result = server.query_healthsurvey("sql", sql="SELECT 1", max_rows=25)
-
-        self.assertEqual(result["n_rows"], 1)
-        client.post.assert_called_once_with(
-            "healthsurvey",
-            "/sql",
-            {"query": "SELECT 1", "max_rows": 25},
-            timeout=server.REQUEST_TIMEOUT_SECONDS,
-        )
-
-    def test_required_survey_parameters_are_validated(self):
-        with self.assertRaisesRegex(ValueError, "params.item"):
-            server.query_consumption("item_trends", {})
-        with self.assertRaisesRegex(ValueError, "params.table"):
-            server.query_healthsurvey("diseases", {"table": "invalid"})
-        with self.assertRaisesRegex(ValueError, "params.query"):
-            server.query_healthsurvey("disease_lookup", {})
-
-    @patch("bharatvitals.runtime.client")
-    def test_http_errors_identify_survey_api(self, client):
-        client.get.side_effect = RuntimeError("consumption API returned HTTP 503: offline")
-
-        with self.assertRaisesRegex(ValueError, "consumption survey API unavailable"):
-            server.query_consumption("overview")
-
+class ServerToolTests(unittest.TestCase):
     @patch("bharatvitals.runtime.client")
     def test_srs_life_table_forwards_expected_params(self, client):
         client.get.return_value = [{"state": "Kerala", "e0": 74.1}]
@@ -182,11 +137,17 @@ class SurveyToolTests(unittest.TestCase):
 
         self.assertEqual(set(results), {
             "hmisindia", "mccdindia", "censusindia", "srsindia", "crsindia",
-            "consumptionsurveyindia", "healthsurveyindia",
         })
         self.assertIn("error", results["hmisindia"])
         self.assertEqual(results["mccdindia"]["status"], "ok")
-        self.assertEqual(client.get.call_count, 7)
+        self.assertEqual(client.get.call_count, 5)
+
+    def test_survey_tools_are_absent_from_server_and_guide(self):
+        self.assertFalse(hasattr(server, "query_consumption"))
+        self.assertFalse(hasattr(server, "query_healthsurvey"))
+        guide = server.tool_guide()
+        self.assertNotIn("query_consumption", guide)
+        self.assertNotIn("query_healthsurvey", guide)
 
     @patch("bharatvitals.runtime.client")
     def test_census_discovery_and_query_tools_forward_expected_params(self, client):

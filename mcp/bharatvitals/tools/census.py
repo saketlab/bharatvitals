@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 from bharatvitals.runtime import (
-    CONSUMPTION_API_URL,
     CRS_API_URL,
     CENSUS_API_URL,
-    HEALTHSURVEY_API_URL,
     HMIS_API_URL,
     MCCD_API_URL,
     SRS_API_URL,
@@ -161,5 +159,4 @@ def census_population_projection(
 def census_health() -> dict:
     """Health check for the censusindia REST API."""
     return _request_json("censusindia", CENSUS_API_URL, "GET", "health")
-
 

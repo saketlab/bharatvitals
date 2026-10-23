@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 from bharatvitals.runtime import (
-    CONSUMPTION_API_URL,
     CRS_API_URL,
     CENSUS_API_URL,
-    HEALTHSURVEY_API_URL,
     HMIS_API_URL,
     MCCD_API_URL,
     SRS_API_URL,
@@ -22,8 +20,6 @@ BACKENDS = [
     ("censusindia", CENSUS_API_URL),
     ("srsindia", SRS_API_URL),
     ("crsindia", CRS_API_URL),
-    ("consumptionsurveyindia", CONSUMPTION_API_URL),
-    ("healthsurveyindia", HEALTHSURVEY_API_URL),
 ]
 
 
@@ -264,32 +260,8 @@ TOOL_REGISTRY: dict[str, dict] = {
         "params": "state, period1, period2, category, sex",
     },
     "srs_health": {"purpose": "Health check for the srsindia API", "api": "srsindia /health", "params": "none"},
-    "query_consumption": {
-        "purpose": "Household consumption expenditure survey analytics",
-        "use_for": [
-            "Food and non-food spending",
-            "Item search and catalogue coverage",
-            "Food-group shares by round, state, or sector",
-            "State consumption comparisons",
-            "Item trends across survey rounds",
-        ],
-        "api": "consumptionsurveyindia REST API",
-        "params": "operation, params, sql, max_rows",
-    },
-    "query_healthsurvey": {
-        "purpose": "NSS health survey hospitalization and outpatient analytics",
-        "use_for": [
-            "Disease categories and disease lookup",
-            "Hospitalization and outpatient expenditure",
-            "State and sector comparisons",
-            "Health survey trends and summaries",
-            "Survey variable label search",
-        ],
-        "api": "healthsurveyindia REST API",
-        "params": "operation, params, sql, max_rows",
-    },
     "api_health": {
-        "purpose": "Probe /health of all six backend REST APIs at once",
+        "purpose": "Probe /health of all five backend REST APIs at once",
         "use_for": ["Diagnose which backend is down before querying data"],
         "api": "all backends /health",
         "params": "none",
@@ -306,11 +278,8 @@ TOOL_DECISION_RULE = (
     "expectancy, or demographic indicators -> srs_query_life_table, "
     "srs_query_cod, srs_query_bulletin, or srs_summary_indicators. If it is "
     "about Census of India population, variables, or projections -> "
-    "census_query, census_population, or census_population_projection. If it "
-    "is about household spending or food items -> query_consumption. If it "
-    "is about illness, hospitalization, outpatient care, or health "
-    "expenditure in NSS surveys -> query_healthsurvey. If a tool reports an "
-    "unavailable backend, call api_health to diagnose."
+    "census_query, census_population, or census_population_projection. If a "
+    "tool reports an unavailable backend, call api_health to diagnose."
 )
 
 
@@ -325,5 +294,4 @@ def tool_guide() -> dict:
     guide = {name: dict(entry) for name, entry in TOOL_REGISTRY.items()}
     guide["decision_rule"] = TOOL_DECISION_RULE
     return guide
-
 

@@ -35,7 +35,6 @@ from bharatvitals.tools.hmis import *  # noqa: F401,F403
 from bharatvitals.tools.mccd import *  # noqa: F401,F403
 from bharatvitals.tools.meta import *  # noqa: F401,F403
 from bharatvitals.tools.srs import *  # noqa: F401,F403
-from bharatvitals.tools.surveys import *  # noqa: F401,F403
 
 # Discover every module under bharatvitals.tools. Vendored modules registered
 # their tools on import; the extras (crs, srs_resources) expose register().

@@ -140,8 +140,6 @@ _TOKENS = (
     ("hmis", "hmis"),
     ("mccd", "mccd"),
     ("census", "census"),
-    ("consumption", "consumption"),
-    ("healthsurvey", "healthsurvey"),
     ("srs", "srs"),
     ("crs", "crs"),
 )

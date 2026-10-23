@@ -20,8 +20,7 @@ class _SourceServer:
     source_id: str
     pkg_name: str
     # Path of the Plumber entry point inside the installed R package's `inst/`
-    # directory. Most packages ship `plumber/plumber.R`; the NSS survey
-    # packages ship `server/api.R` instead.
+    # directory. Most packages ship `plumber/plumber.R`.
     plumber_path: str = "plumber/plumber.R"
     _proc: Optional[subprocess.Popen] = field(default=None, repr=False)  # type: ignore[type-arg]
     _url: Optional[str] = field(default=None, repr=False)
