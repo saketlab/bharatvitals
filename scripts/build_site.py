@@ -1,4 +1,4 @@
-"""Render README.md into the bharatvitals.saketlab.org landing page.
+"""Render README.md into the bharatvitals.in landing page.
 
 Run from the repo root:
     uv run --project mcp --with markdown python scripts/build_site.py [out_dir]
@@ -17,7 +17,7 @@ from fastmcp import Client
 
 from bharatvitals.server import LABELS, SOURCES, mcp
 
-SITE = "https://bharatvitals.saketlab.org/"
+SITE = "https://bharatvitals.in/"
 MCP_URL = SITE + "mcp"
 TITLE = "BharatVitals - India's health and demographic data over MCP"
 DESCRIPTION = (

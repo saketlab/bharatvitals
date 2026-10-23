@@ -17,7 +17,7 @@ registered births and deaths, and Census population and demographic statistics.
 Add this URL to your AI assistant:
 
 ```text
-https://bharatvitals.saketlab.org/mcp
+https://bharatvitals.in/mcp
 ```
 
 The server needs no API key. You can ask the
@@ -44,7 +44,7 @@ Then try a question such as "What was Kerala's infant mortality rate in 2020?"
 Run this command in your terminal:
 
 ```bash
-claude mcp add --transport http bharatvitals https://bharatvitals.saketlab.org/mcp
+claude mcp add --transport http bharatvitals https://bharatvitals.in/mcp
 ```
 
 Or add it to `~/.claude.json` by hand:
@@ -53,7 +53,7 @@ Or add it to `~/.claude.json` by hand:
 "mcpServers": {
   "bharatvitals": {
     "type": "http",
-    "url": "https://bharatvitals.saketlab.org/mcp"
+    "url": "https://bharatvitals.in/mcp"
   }
 }
 ```
@@ -65,14 +65,14 @@ Restart Claude Code to load the server. Its [Claude Code MCP documentation](http
 Run this command in your terminal:
 
 ```bash
-codex mcp add bharatvitals --url https://bharatvitals.saketlab.org/mcp
+codex mcp add bharatvitals --url https://bharatvitals.in/mcp
 ```
 
 Or add it to `~/.codex/config.toml` by hand:
 
 ```toml
 [mcp_servers.bharatvitals]
-url = "https://bharatvitals.saketlab.org/mcp"
+url = "https://bharatvitals.in/mcp"
 ```
 
 Restart Codex to load the server. Its [Codex MCP documentation](https://developers.openai.com/codex/mcp) lists the other settings.
@@ -82,7 +82,7 @@ Restart Codex to load the server. Its [Codex MCP documentation](https://develope
 Run this command in your terminal:
 
 ```bash
-hermes mcp add bharatvitals --url "https://bharatvitals.saketlab.org/mcp"
+hermes mcp add bharatvitals --url "https://bharatvitals.in/mcp"
 ```
 
 Or add it to `~/.hermes/config.yaml` by hand:
@@ -90,7 +90,7 @@ Or add it to `~/.hermes/config.yaml` by hand:
 ```yaml
 mcp_servers:
   bharatvitals:
-    url: "https://bharatvitals.saketlab.org/mcp"
+    url: "https://bharatvitals.in/mcp"
 ```
 
 Restart Hermes to load the server. Its [Hermes MCP documentation](https://hermes-agent.nousresearch.com/docs/user-guide/features/mcp) lists the other settings.
@@ -111,7 +111,7 @@ extensions:
     enabled: true
     type: streamable_http
     name: bharatvitals
-    uri: https://bharatvitals.saketlab.org/mcp
+    uri: https://bharatvitals.in/mcp
     timeout: 300
 ```
 
@@ -122,7 +122,7 @@ Restart Goose to load the server. Its [Goose MCP documentation](https://goose-do
 Run this command in your terminal:
 
 ```bash
-openclaw mcp add bharatvitals --url https://bharatvitals.saketlab.org/mcp --transport streamable-http
+openclaw mcp add bharatvitals --url https://bharatvitals.in/mcp --transport streamable-http
 ```
 
 Or add it to `~/.openclaw/openclaw.json` by hand:
@@ -132,7 +132,7 @@ Or add it to `~/.openclaw/openclaw.json` by hand:
   "mcp": {
     "servers": {
       "bharatvitals": {
-        "url": "https://bharatvitals.saketlab.org/mcp",
+        "url": "https://bharatvitals.in/mcp",
         "transport": "streamable-http"
       }
     }
@@ -149,7 +149,7 @@ Add it to `.cursor/mcp.json`:
 ```json
 {
   "mcpServers": {
-    "bharatvitals": { "url": "https://bharatvitals.saketlab.org/mcp" }
+    "bharatvitals": { "url": "https://bharatvitals.in/mcp" }
   }
 }
 ```
@@ -163,7 +163,7 @@ Add it to `.vscode/mcp.json`:
 ```json
 {
   "servers": {
-    "bharatvitals": { "type": "http", "url": "https://bharatvitals.saketlab.org/mcp" }
+    "bharatvitals": { "type": "http", "url": "https://bharatvitals.in/mcp" }
   }
 }
 ```
@@ -175,7 +175,7 @@ Restart VS Code to load the server. Its [VS Code MCP documentation](https://code
 Run this command in your terminal:
 
 ```bash
-gemini mcp add --transport http bharatvitals https://bharatvitals.saketlab.org/mcp
+gemini mcp add --transport http bharatvitals https://bharatvitals.in/mcp
 ```
 
 Or add it to `~/.gemini/settings.json` by hand:
@@ -183,7 +183,7 @@ Or add it to `~/.gemini/settings.json` by hand:
 ```json
 {
   "mcpServers": {
-    "bharatvitals": { "httpUrl": "https://bharatvitals.saketlab.org/mcp" }
+    "bharatvitals": { "httpUrl": "https://bharatvitals.in/mcp" }
   }
 }
 ```
@@ -192,7 +192,7 @@ Restart Gemini CLI to load the server. Its [Gemini CLI MCP documentation](https:
 
 ### Other LLMs
 
-[llms.txt](https://bharatvitals.saketlab.org/llms.txt) gives the server URL,
+[llms.txt](https://bharatvitals.in/llms.txt) gives the server URL,
 usage notes and each tool's parameters as plain text, for assistants that read
 it.
 
@@ -243,7 +243,7 @@ CRS also expose six read-only MCP resources: `srs://states`,
 
 <!-- tools -->
 
-[llms.txt](https://bharatvitals.saketlab.org/llms.txt) lists every tool with its parameters.
+[llms.txt](https://bharatvitals.in/llms.txt) lists every tool with its parameters.
 
 ## How it works
 

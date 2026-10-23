@@ -1,8 +1,8 @@
 # bharatvitals-mcp
 
 MCP server that makes India's public health and demographic datasets queryable
-from AI assistants. The hosted server is at `https://bharatvitals.saketlab.org/mcp`;
-see the [top-level README](../README.md) for client setup and the data overview.
+from AI assistants. The hosted server is at `https://bharatvitals.in/mcp`;
+see the [top-level README](../README.md) for client setup.
 
 ## Run from a checkout
 
@@ -60,13 +60,8 @@ call it when a tool says an API is unreachable.
 
 ## Tools
 
-59 tools and 6 MCP resources. The HMIS, MCCD, SRS and Census tools are
-vendored from the `mcp_forall` project; the CRS tools and the SRS/CRS resources
-come from the `bharatvitals/tools/` modules. Every tool routes through
-`bharatvitals.runtime.client` (a `BharatVitalsClient`), so tests mock that
-boundary. The site lists every tool, and
-[llms.txt](https://bharatvitals.saketlab.org/llms.txt) carries each one's
-parameters.
+The server builds its tool list from `bharatvitals/tools/`. The site lists every tool,
+and [llms.txt](https://bharatvitals.in/llms.txt) carries each one's parameters.
 
 ## MCP Resources
 
