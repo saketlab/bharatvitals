@@ -8,6 +8,7 @@ Tool tables and llms.txt come from the server's own tool list.
 
 import asyncio
 import html
+import json
 import shutil
 import sys
 from pathlib import Path
@@ -15,11 +16,13 @@ from pathlib import Path
 import markdown
 from fastmcp import Client
 
-from bharatvitals.server import LABELS, SOURCES, mcp
+from bharatvitals.normalize import _types
+from bharatvitals.server import MODULES, mcp
 
 SITE = "https://bharatvitals.in/"
 MCP_URL = SITE + "mcp"
 TITLE = "BharatVitals - India's health and demographic data over MCP"
+LABELS = [m.LABEL for m in MODULES]
 DESCRIPTION = (
     "A remote MCP server that lets Claude and other AI assistants query India's "
     f"official health and demographic statistics: {', '.join(LABELS[:-1])} and {LABELS[-1]}."
@@ -30,6 +33,7 @@ ASSETS = {
     "site/logo/logo.png": "site/logo/logo.png",  # README path, unchanged
     "site/logo/logo.svg": "logo.svg",
 }
+SOURCES = {m.SOURCE: m.LABEL for m in MODULES}
 
 STYLE = """
 :root { color-scheme: light dark; --fg:#1d1d1f; --bg:#fff; --muted:#6e6e73;
@@ -128,37 +132,51 @@ SITEMAP = f"""<?xml version="1.0" encoding="UTF-8"?>
 ROBOTS = f"User-agent: *\nAllow: /\nSitemap: {SITE}sitemap.xml\n"
 
 
+def _params(schema: dict) -> str:
+    """Parameter list from the input schema; FastMCP moves Args out of the description."""
+    required = set(schema.get("required", []))
+    lines = []
+    for name, spec in schema.get("properties", {}).items():
+        kinds = sorted(_types(spec))
+        tag = (
+            "required"
+            if name in required
+            else f"default {json.dumps(spec.get('default'))}"
+        )
+        doc = " ".join((spec.get("description") or "").split())
+        lines.append(
+            f"- {name} ({'/'.join(kinds) or 'any'}, {tag})"
+            + (f": {doc}" if doc else "")
+        )
+    return "Parameters:\n" + "\n".join(lines) if lines else ""
+
+
 def _list_tools() -> list[tuple[str, str]]:
     async def go() -> list[tuple[str, str]]:
         async with Client(mcp) as client:
-            return [(t.name, t.description or "") for t in await client.list_tools()]
+            return [
+                (
+                    t.name,
+                    "\n\n".join(
+                        filter(
+                            None,
+                            [(t.description or "").strip(), _params(t.inputSchema)],
+                        )
+                    ),
+                )
+                for t in await client.list_tools()
+            ]
 
     return sorted(asyncio.run(go()))
-
-
-_TOKENS = (
-    ("hmis", "hmis"),
-    ("mccd", "mccd"),
-    ("census", "census"),
-    ("srs", "srs"),
-    ("crs", "crs"),
-)
-
-
-def _label_for(name: str) -> str:
-    """Map a tool name onto its source label, falling back to Diagnostics."""
-    lowered = name.lower()
-    for token, source in _TOKENS:
-        if token in lowered:
-            return SOURCES[source]
-    return "Diagnostics"
 
 
 def tools_html(tools: list[tuple[str, str]]) -> str:
     """One table per source, then the rest under Diagnostics: name and first docstring line."""
     groups: dict[str, list[tuple[str, str]]] = {}
     for name, desc in tools:
-        groups.setdefault(_label_for(name), []).append((name, desc))
+        groups.setdefault(SOURCES.get(name.split("_", 1)[0], "Diagnostics"), []).append(
+            (name, desc)
+        )
     parts = [f"<p>{len(tools)} tools:</p>"]
     for label in [*SOURCES.values(), "Diagnostics"]:
         rows = groups.get(label)
@@ -186,8 +204,6 @@ def llms_txt(tools: list[tuple[str, str]]) -> str:
         "## How to use the tools",
         "",
         mcp.instructions or "",
-        "",
-        'Multiple values are comma-separated, e.g. state="Kerala,Tamil Nadu".',
         "",
         "## Tools",
         "",

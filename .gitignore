@@ -55,7 +55,6 @@ Rplots.pdf
 
 # built landing page
 docs/
-CHANGELOG.md
 
 # local Claude Code session logs
 .claude/logs/

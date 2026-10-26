@@ -14,13 +14,8 @@ uv run bharatvitals-mcp                                                  # stdio
 MCP_TRANSPORT=http MCP_HOST=127.0.0.1 MCP_PORT=9000 uv run bharatvitals-mcp   # streamable HTTP at /mcp
 ```
 
-`MCP_TRANSPORT` accepts `stdio` (default), `http` and `streamable-http`.
-`MCP_HOST`, `MCP_PORT`, `MCP_PATH`, `MCP_STATELESS_HTTP` and
-`MCP_ALLOWED_HOSTS` configure the HTTP transport, and
-`REQUEST_TIMEOUT_SECONDS` (default 30) the backend call timeout. With fastmcp
-3.x the transport rejects `MCP_ALLOWED_HOSTS`, so `main()` falls back to
-plain host/port binding and the endpoint is served at FastMCP's default path
-`/mcp`; `MCP_HOST` and `MCP_PORT` always take effect.
+`MCP_TRANSPORT` accepts `stdio` (default) and `http`; `MCP_HOST` and
+`MCP_PORT` set where the HTTP transport listens.
 
 ## Prerequisites
 
@@ -37,10 +32,10 @@ export BHARATVITALS_CRS_URL=http://127.0.0.1:8484
 export BHARATVITALS_CENSUS_URL=http://127.0.0.1:8895
 ```
 
-The URLs mirror the ports pinned in `.github/services/bharatvitals-mcp.service`.
-Override any of them to use your own instance. A remote base
-URL must be the API root (for example, the Census API base URL ends in
-`/api`). A source that fails to auto-start is not retried for 60 seconds.
+These are the ports pinned in `.github/services/bharatvitals-mcp.service`.
+A remote base URL must be the API root, for example
+`https://censusindia.saketlab.org/api`. A source that fails to auto-start is
+not retried for 60 seconds, and the error includes what R printed.
 
 On Windows, the client looks for `Rscript.exe` on `PATH`, under `R_HOME`, and
 in the standard `C:\Program Files\R\R-*\bin` installation folders. For a
@@ -55,8 +50,9 @@ $env:BHARATVITALS_RSCRIPT = 'C:\Program Files\R\R-4.6.1\bin\Rscript.exe'
 `BHARATVITALS_CRS_PLUMBER_R`) overrides the discovered Plumber entry file for
 one source.
 
-`api_health` probes `/health` on every source and reports each one separately;
-call it when a tool says an API is unreachable.
+`bharatvitals_health` probes `/health` on every source that is configured or
+has been used, without starting R; call it when a tool says an API is
+unreachable.
 
 ## Tools
 
@@ -75,9 +71,11 @@ SRS and CRS also register read-only MCP resources:
 From this directory (no R or running backend required):
 
 ```bash
-uv run python -m unittest discover -s tests   # tool layer, backends mocked
-uv run pytest test_client.py                  # R discovery / auto-start client
+uv run python test_client.py
 ```
+
+It also checks each tool's endpoint and parameters against `plumber.R` when
+the R package checkouts sit next to this repository.
 
 ## How it works
 
