@@ -1,7 +1,9 @@
-import json
-from typing import TYPE_CHECKING, Optional
+import re
+from typing import TYPE_CHECKING, Any, Literal, Optional
 
 from fastmcp import FastMCP
+
+from bharatvitals.tools._common import READ_ONLY, to_json
 
 if TYPE_CHECKING:
     from bharatvitals.client import BharatVitalsClient
@@ -10,113 +12,176 @@ SOURCE = "mccd"
 PACKAGE = "mccdindia"
 LABEL = "MCCD"
 GUIDE = (
-    "Cause-of-death, 36 states, 2008-2023, ICD-10 coded. Start with "
-    "mccd_list_chapters or mccd_list_causes, then mccd_query."
+    "Use for ICD-10 detail on medically certified deaths, 36 states, 2008-2024 "
+    "(most tables end in 2023). "
+    "Certified deaths are a minority, mostly in hospitals, so MCCD shares are "
+    "not population cause-of-death shares; SRS has those. Start with "
+    "mccd_list_tables, then mccd_list_causes or mccd_list_chapters, then mccd_query."
 )
 
 
-def _to_json(data: object) -> str:
-    return json.dumps(data, indent=2)
-
-
 def register(mcp: FastMCP, client: "BharatVitalsClient") -> None:
+    def get(endpoint: str, params: dict[str, Any]) -> str:
+        return to_json(client.get(SOURCE, endpoint, params))
 
-    @mcp.tool()
+    def query(endpoint: str, params: dict[str, Any]) -> str:
+        found = client.get(SOURCE, endpoint, params)
+        cause = params.get("cause")
+        # a cause that matches no table returns the closest causes
+        if (
+            cause
+            and not found["rows"]
+            and not client.get(SOURCE, "/causes", {"pattern": cause})["rows"]
+        ):
+            words = "|".join(re.findall(r"[a-z]{4,}", cause.lower()))
+            hits = (
+                client.get(SOURCE, "/causes", {"pattern": words, "limit": 8})["rows"]
+                if words
+                else []
+            )
+            names = "; ".join(
+                f"{r['Cause_Of_Death']} ({r['ICD10_Code']})" for r in hits
+            )
+            found["note"] = f"No cause matches {cause!r}." + (
+                f" Causes sharing its words: {names}."
+                if names
+                else " Search mccd_list_causes with one medical word."
+            )
+        return to_json(found)
+
+    @mcp.tool(annotations=READ_ONLY)
     def mccd_list_states() -> str:
-        """List all 37 canonical state/UT names in MCCD data.
+        """MCCD states/UTs with two-letter codes (state_name, state_abbr).
 
-        Includes "All States (Total)" national aggregate.
+        Pass state="India" in other tools for the national row.
         """
-        return _to_json(client.get(SOURCE, "/states", {}))
+        return get("/states", {})
 
-    @mcp.tool()
-    def mccd_list_causes(pattern: Optional[str] = None) -> str:
-        """Search MCCD cause-of-death entries.
+    @mcp.tool(annotations=READ_ONLY)
+    def mccd_list_tables() -> str:
+        """MCCD tables: what each holds, has_state, has_age_group, first_year and last_year.
+
+        Check this before mccd_query; tables end in different years.
+        """
+        return get("/tables", {})
+
+    @mcp.tool(annotations=READ_ONLY)
+    def mccd_list_causes(
+        pattern: Optional[str] = None,
+        limit: Optional[int] = None,
+        offset: Optional[int] = None,
+    ) -> str:
+        """Search MCCD causes of death; returns Cause_Of_Death and ICD10_Code.
 
         Args:
-            pattern: Case-insensitive regex on Cause_Of_Death or ICD10_Code.
-                     E.g. "heart", "I20", "malaria". Empty = all causes.
+            pattern: Case-insensitive regex on Cause_Of_Death or ICD10_Code,
+                     e.g. "heart", "I20", "malaria". None = all causes.
+            limit: Rows per page, 1-10000 (default 1000).
+            offset: Rows to skip; pass next_offset from the previous result.
         """
-        return _to_json(client.get(SOURCE, "/causes", {"pattern": pattern}))
+        return get("/causes", {"pattern": pattern, "limit": limit, "offset": offset})
 
-    @mcp.tool()
+    @mcp.tool(annotations=READ_ONLY)
     def mccd_list_chapters(category: Optional[str] = None) -> str:
-        """ICD-10 chapters with epidemiological categories.
+        """ICD-10 chapters with ICD range, category and subcategory.
 
         Args:
             category: "Communicable", "NCD", "External", "Ill-defined",
-                      or "Other". Empty = all chapters.
+                      or "Other". None = all chapters.
         """
-        return _to_json(client.get(SOURCE, "/chapters", {"category": category}))
+        return get("/chapters", {"category": category})
 
-    @mcp.tool()
+    @mcp.tool(annotations=READ_ONLY)
     def mccd_query(
-        table: str = "deaths",
+        table: Literal[
+            "deaths",
+            "deaths_pct",
+            "cause",
+            "age",
+            "subcause",
+            "state_subcause",
+            "state_age_pct",
+            "trend",
+            "trend_pct",
+            "age_pct",
+            "age_over_pct",
+        ] = "deaths",
         cause: Optional[str] = None,
         state: Optional[str] = None,
         year: Optional[str] = None,
-        sex: Optional[str] = None,
+        sex: Literal["T", "M", "F"] = "T",
+        limit: Optional[int] = None,
+        offset: Optional[int] = None,
     ) -> str:
-        """Query MCCD cause-of-death data (36 states, 2008-2023, ICD-10 coded).
+        """Medically certified deaths by table, ICD-10 coded; years per table in mccd_list_tables.
+
+        Rows mix levels: level is "total" (ALL CAUSES), "chapter" or "cause",
+        and cause rows include group subtotals, so never sum rows. Percent
+        tables are shares, not counts.
 
         Args:
-            table: "deaths" (state-wise counts, Table 2),
-                   "deaths_pct" (state-wise percentages, Table 3),
-                   "cause" (by major cause/ICD chapter, Table 4),
-                   "age" (India-level age-disaggregated, Table 5),
-                   "subcause" (India-level detailed sub-cause, Table 6),
-                   "state_subcause" (state + age disaggregated, Table 7).
-            cause: Regex on Cause_Of_Death or ICD10_Code, e.g. "I20", "coronary".
-                   Only for cause/subcause/state_subcause tables.
-            state: Comma-separated state names, e.g. "Kerala,Tamil Nadu".
-                   "All States (Total)" or "India" for national aggregate.
-            year: Comma-separated years or range, e.g. "2015,2016" or "2015:2020".
-            sex: "T" (total), "M" (male), or "F" (female).
+            table: "deaths" (default; state x sex, all causes, Table 2),
+                   "deaths_pct" (state x sex, percent),
+                   "cause" (state x cause x sex, Table 4),
+                   "age" (India x cause x sex x age, Table 5),
+                   "subcause" (India x detailed sub-cause x age, Table 6),
+                   "state_subcause" (state x sub-cause x age, Table 7),
+                   "state_age_pct", "trend", "trend_pct", "age_pct", "age_over_pct".
+                   Tables without a state column reject state; tables without
+                   a cause breakdown reject cause.
+            cause: Regex on Cause_Of_Death or ICD10_Code in medical wording, e.g.
+                   "myocardial infarction" or "I21"; mccd_list_causes finds it.
+            state: Comma-separated state names or two-letter codes, e.g. "Kerala,TN".
+                   "India" = national row.
+            year: Comma-separated years or a range, e.g. "2015,2016" or "2015:2020".
+            sex: "T" (total, default), "M" or "F". M and F add up to T; never sum sexes.
+            limit: Rows per page, 1-10000 (default 1000).
+            offset: Rows to skip; pass next_offset from the previous result.
         """
-        return _to_json(
-            client.get(
-                SOURCE,
-                "/query",
-                {
-                    "table": table,
-                    "cause": cause,
-                    "state": state,
-                    "year": year,
-                    "sex": sex,
-                },
-            )
+        return query(
+            "/query",
+            {
+                "table": table,
+                "cause": cause,
+                "state": state,
+                "year": year,
+                "sex": sex,
+                "limit": limit,
+                "offset": offset,
+            },
         )
 
-    @mcp.tool()
+    @mcp.tool(annotations=READ_ONLY)
     def mccd_categorize(
-        table: str = "cause",
+        table: Literal["cause", "subcause", "state_subcause"] = "cause",
         cause: Optional[str] = None,
         state: Optional[str] = None,
         year: Optional[str] = None,
-        sex: Optional[str] = None,
+        sex: Literal["T", "M", "F"] = "T",
+        limit: Optional[int] = None,
+        offset: Optional[int] = None,
     ) -> str:
-        """Like mccd_query but adds epidemiological category columns.
-
-        Joins with ICD-10 chapter metadata to add "category"
-        (Communicable/NCD/External/Ill-defined/Other) and "subcategory".
+        """Like mccd_query, plus category (Communicable/NCD/External/Ill-defined/Other) and subcategory.
 
         Args:
-            table: "cause", "subcause", or "state_subcause".
+            table: "cause" (default; has state), "subcause" (India only), or
+                   "state_subcause".
             cause: Regex on Cause_Of_Death or ICD10_Code.
-            state: Comma-separated state names.
-            year: Comma-separated years or range.
-            sex: "T", "M", or "F".
+            state: Comma-separated state names or two-letter codes; "India" = national row.
+            year: Comma-separated years or a range, e.g. "2015:2020".
+            sex: "T" (default), "M" or "F". M and F add up to T; never sum sexes.
+            limit: Rows per page, 1-10000 (default 1000).
+            offset: Rows to skip; pass next_offset from the previous result.
         """
-        return _to_json(
-            client.get(
-                SOURCE,
-                "/categorize",
-                {
-                    "table": table,
-                    "cause": cause,
-                    "state": state,
-                    "year": year,
-                    "sex": sex,
-                },
-            )
+        return query(
+            "/categorize",
+            {
+                "table": table,
+                "cause": cause,
+                "state": state,
+                "year": year,
+                "sex": sex,
+                "limit": limit,
+                "offset": offset,
+            },
         )

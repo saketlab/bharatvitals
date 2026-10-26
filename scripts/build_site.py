@@ -8,6 +8,7 @@ Tool tables and llms.txt come from the server's own tool list.
 
 import asyncio
 import html
+import json
 import shutil
 import sys
 from pathlib import Path
@@ -15,6 +16,7 @@ from pathlib import Path
 import markdown
 from fastmcp import Client
 
+from bharatvitals.normalize import _types
 from bharatvitals.server import MODULES, mcp
 
 SITE = "https://bharatvitals.in/"
@@ -130,10 +132,40 @@ SITEMAP = f"""<?xml version="1.0" encoding="UTF-8"?>
 ROBOTS = f"User-agent: *\nAllow: /\nSitemap: {SITE}sitemap.xml\n"
 
 
+def _params(schema: dict) -> str:
+    """Parameter list from the input schema; FastMCP moves Args out of the description."""
+    required = set(schema.get("required", []))
+    lines = []
+    for name, spec in schema.get("properties", {}).items():
+        kinds = sorted(_types(spec))
+        tag = (
+            "required"
+            if name in required
+            else f"default {json.dumps(spec.get('default'))}"
+        )
+        doc = " ".join((spec.get("description") or "").split())
+        lines.append(
+            f"- {name} ({'/'.join(kinds) or 'any'}, {tag})"
+            + (f": {doc}" if doc else "")
+        )
+    return "Parameters:\n" + "\n".join(lines) if lines else ""
+
+
 def _list_tools() -> list[tuple[str, str]]:
     async def go() -> list[tuple[str, str]]:
         async with Client(mcp) as client:
-            return [(t.name, t.description or "") for t in await client.list_tools()]
+            return [
+                (
+                    t.name,
+                    "\n\n".join(
+                        filter(
+                            None,
+                            [(t.description or "").strip(), _params(t.inputSchema)],
+                        )
+                    ),
+                )
+                for t in await client.list_tools()
+            ]
 
     return sorted(asyncio.run(go()))
 
@@ -172,8 +204,6 @@ def llms_txt(tools: list[tuple[str, str]]) -> str:
         "## How to use the tools",
         "",
         mcp.instructions or "",
-        "",
-        'Multiple values are comma-separated, e.g. state="Kerala,Tamil Nadu".',
         "",
         "## Tools",
         "",

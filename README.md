@@ -5,12 +5,10 @@
 <h1 align="center">BharatVitals</h1>
 <p align="center" class="tagline">India's health and demographic data for AI assistants, over MCP</p>
 
-BharatVitals connects Claude and other AI assistants to India's official health
-and demographic statistics through the
-[Model Context Protocol](https://modelcontextprotocol.io) (MCP). It allows
-you to ask questions in plain language, and the assistant looks up the 
-published figures: health-service indicators, causes of death, life tables, 
-registered births and deaths, and the Census.
+BharatVitals is an [MCP](https://modelcontextprotocol.io) server that gives
+Claude and other AI assistants access to India's official health and
+demographic statistics: health-service indicators, causes of death, life
+tables, registered births and deaths, and Census data.
 
 ## Quick setup
 
@@ -20,9 +18,9 @@ Add this URL to your AI assistant:
 https://bharatvitals.in/mcp
 ```
 
-The server needs no API key. You can ask the
-assistant to add it for you, or paste one of the snippets below into its
-configuration file.
+The server needs no API key. Ask your assistant to add it, or use the
+configuration for your client below. The `.mcp.json` file in this repository
+adds the server to Claude Code sessions in the repository.
 
 ## Claude
 
@@ -34,13 +32,13 @@ In Claude.ai or Claude Desktop:
 4. Name the connector `BharatVitals` and paste the MCP server URL.
 5. Approve the tools you want Claude to use.
 
-Then try a question such as "What was Kerala's infant mortality rate in 2020?"
+Then ask a question, for example "What was Kerala's infant mortality rate in 2020?"
 
 ## Other assistants
 
 ### Claude Code
 
-Run this command in your terminal:
+Run:
 
 ```bash
 claude mcp add --transport http bharatvitals https://bharatvitals.in/mcp
@@ -57,11 +55,11 @@ Or add it to `~/.claude.json` by hand:
 }
 ```
 
-Restart Claude Code to load the server. Its [Claude Code MCP documentation](https://docs.claude.com/en/docs/claude-code/mcp) lists the other settings.
+Restart Claude Code. For other settings, see the [Claude Code MCP documentation](https://docs.claude.com/en/docs/claude-code/mcp).
 
 ### Codex
 
-Run this command in your terminal:
+Run:
 
 ```bash
 codex mcp add bharatvitals --url https://bharatvitals.in/mcp
@@ -74,11 +72,11 @@ Or add it to `~/.codex/config.toml` by hand:
 url = "https://bharatvitals.in/mcp"
 ```
 
-Restart Codex to load the server. Its [Codex MCP documentation](https://developers.openai.com/codex/mcp) lists the other settings.
+Restart Codex. For other settings, see the [Codex MCP documentation](https://developers.openai.com/codex/mcp).
 
 ### Hermes
 
-Run this command in your terminal:
+Run:
 
 ```bash
 hermes mcp add bharatvitals --url "https://bharatvitals.in/mcp"
@@ -92,11 +90,11 @@ mcp_servers:
     url: "https://bharatvitals.in/mcp"
 ```
 
-Restart Hermes to load the server. Its [Hermes MCP documentation](https://hermes-agent.nousresearch.com/docs/user-guide/features/mcp) lists the other settings.
+Restart Hermes. For other settings, see the [Hermes MCP documentation](https://hermes-agent.nousresearch.com/docs/user-guide/features/mcp).
 
 ### Goose
 
-Run this command in your terminal:
+Run:
 
 ```bash
 goose configure   # Add Extension → Remote Extension (Streamable HTTP)
@@ -114,11 +112,11 @@ extensions:
     timeout: 300
 ```
 
-Restart Goose to load the server. Its [Goose MCP documentation](https://goose-docs.ai/docs/getting-started/using-extensions) lists the other settings.
+Restart Goose. For other settings, see the [Goose MCP documentation](https://goose-docs.ai/docs/getting-started/using-extensions).
 
 ### OpenClaw
 
-Run this command in your terminal:
+Run:
 
 ```bash
 openclaw mcp add bharatvitals --url https://bharatvitals.in/mcp --transport streamable-http
@@ -139,7 +137,7 @@ Or add it to `~/.openclaw/openclaw.json` by hand:
 }
 ```
 
-Restart OpenClaw to load the server. Its [OpenClaw MCP documentation](https://docs.openclaw.ai/cli/mcp) lists the other settings.
+Restart OpenClaw. For other settings, see the [OpenClaw MCP documentation](https://docs.openclaw.ai/cli/mcp).
 
 ### Cursor
 
@@ -153,7 +151,7 @@ Add it to `.cursor/mcp.json`:
 }
 ```
 
-Restart Cursor to load the server. Its [Cursor MCP documentation](https://docs.cursor.com/context/model-context-protocol) lists the other settings.
+Restart Cursor. For other settings, see the [Cursor MCP documentation](https://docs.cursor.com/context/model-context-protocol).
 
 ### VS Code
 
@@ -167,11 +165,11 @@ Add it to `.vscode/mcp.json`:
 }
 ```
 
-Restart VS Code to load the server. Its [VS Code MCP documentation](https://code.visualstudio.com/docs/copilot/chat/mcp-servers) lists the other settings.
+Restart VS Code. For other settings, see the [VS Code MCP documentation](https://code.visualstudio.com/docs/copilot/chat/mcp-servers).
 
 ### Gemini CLI
 
-Run this command in your terminal:
+Run:
 
 ```bash
 gemini mcp add --transport http bharatvitals https://bharatvitals.in/mcp
@@ -187,28 +185,28 @@ Or add it to `~/.gemini/settings.json` by hand:
 }
 ```
 
-Restart Gemini CLI to load the server. Its [Gemini CLI MCP documentation](https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md) lists the other settings.
+Restart Gemini CLI. For other settings, see the [Gemini CLI MCP documentation](https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md).
 
 ### Other LLMs
 
-[llms.txt](https://bharatvitals.in/llms.txt) gives the server URL,
-usage notes and each tool's parameters as plain text, for assistants that read
-it.
+[llms.txt](https://bharatvitals.in/llms.txt) gives the server URL, the usage
+notes and the parameters of each tool as plain text.
 
 ## Data
 
 | Source | What it covers | Coverage |
 |--------|----------------|----------|
-| HMIS, Health Management Information System | 900+ health-service indicators: immunisation, maternal care, disease cases | 36 states, 700+ districts, monthly from April 2008 |
-| MCCD, Medical Certification of Cause of Death | ICD-10 coded causes of death by age and sex | 36 states, 2008-2023 |
-| SRS, Sample Registration System | Life tables, causes of death, birth, death and infant mortality rates, fertility | 36 states, 1970 onward |
-| CRS, Civil Registration System | Registered births, deaths, infant deaths and still births; registration completeness | States and 700+ districts, 2009-2023 |
-| Census of India | Population, literacy, workers, households by state, district and subdistrict; population projections | 1901-2011; projections to 2036 (states) and 2031 (districts) |
+| HMIS, Health Management Information System | 840+ state-level and 845 district-level health-service indicators: immunisation, maternal care, disease cases | 36 states, 700+ districts, monthly from April 2008 |
+| MCCD, Medical Certification of Cause of Death | ICD-10 coded causes of medically certified deaths by age and sex | 36 states, 2008-2024 |
+| SRS, Sample Registration System | Life tables, causes of death, birth, death, infant and maternal mortality rates, fertility, rates by NSSO region | 36 states. Bulletins 1997-2024, life tables and causes of death 2007-2024 |
+| CRS, Civil Registration System | Registered births, deaths, infant deaths and still births, registration completeness | States and 700+ districts, 2009-2023 |
+| Census of India | Population, literacy, workers, households by state, district and subdistrict, population projections | 1901-2011. Projections to 2036 (states) and 2031 (districts) |
 
-The figures come from published government tables, cleaned by the open R
-packages [hmisindia](https://hmisindia.saketlab.org),
+The data comes from published government tables. These open R packages
+clean the tables: [hmisindia](https://hmisindia.saketlab.org),
 [srsindia](https://srsindia.saketlab.org),
-[censusindia](https://censusindia.saketlab.org), [mccdindia](https://mccindia.saketlab.org) and 
+[censusindia](https://censusindia.saketlab.org),
+[mccdindia](https://mccdindia.saketlab.org),
 [crsindia](https://crsindia.saketlab.org).
 
 ## Example questions
@@ -219,29 +217,12 @@ packages [hmisindia](https://hmisindia.saketlab.org),
 - Which districts of Uttar Pradesh registered the fewest births per 1,000 people in 2020?
 - What was Maharashtra's literacy rate in 2011, and its projected population in 2031?
 
-## Tools
-
-Each tool name starts with its source (`hmis_`, `mccd_`, `srs_`, `crs_`,
-`census_`). The `list_` tools return valid states, indicators, periods and table
-names, so the assistant can check its inputs before it queries.
-
 <!-- tools -->
 
 [llms.txt](https://bharatvitals.in/llms.txt) lists every tool with its parameters.
 
-## Run it locally
-
-```bash
-git clone https://github.com/saketlab/bharatvitals.git
-cd bharatvitals/mcp
-uv run bharatvitals-mcp
-```
-
-Each data source needs its R package installed. On the first call to a source
-the server starts that package's Plumber API; set `BHARATVITALS_<SOURCE>_URL`
-(for example `BHARATVITALS_HMIS_URL`) to use an API that is already running.
 
 ## Issues
 
-If you spot a wrong number or want another dataset, open an issue on
+To report an incorrect value or to ask for a new dataset, open an issue on
 [GitHub](https://github.com/saketlab/bharatvitals/issues).

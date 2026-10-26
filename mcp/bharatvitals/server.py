@@ -9,6 +9,8 @@ from fastmcp import FastMCP
 
 from bharatvitals import tools
 from bharatvitals.client import BharatVitalsClient
+from bharatvitals.normalize import ForgivingArguments
+from bharatvitals.tools._common import READ_ONLY
 
 # each tools/<id>.py is a source; _-prefixed modules are helpers
 MODULES = tuple(
@@ -18,17 +20,32 @@ MODULES = tuple(
 )
 _SOURCES = tuple(m.SOURCE for m in MODULES)
 
+CONVENTIONS = """\
+Conventions shared by every tool:
+- State: a name or a two-letter code, case-insensitive, comma-separated ("Kerala,TN"). An unknown name is an error; <source>_list_states has the valid ones.
+- India: "India" gives the national row where the source has one; a source without one says so.
+- Year: comma-separated years or a range ("2015:2020").
+- Sector: "total", "rural" or "urban".
+- District: rows name it in a district column. Spellings follow each source, and a name can cover different areas across sources and years (Barddhaman split in 2017).
+- Row tools return {source, complete, total_rows, offset, returned, rows}, 1000 rows per page unless limit is set (up to 10000). complete is false on a partial page: fetch next_offset before answering. warnings flag a partial page or rows that overlap (India with its states, several sexes or sectors); a note explains an empty result.
+- Never sum rows unless a tool says they add up: results often mix national, state and subtotal rows, and SRS, CRS and MCCD values are not interchangeable.
+- Errors carry the API's reason (bad value, or a filter the table cannot apply). Fix the argument and retry.
+- If a tool reports an unreachable API, call bharatvitals_health."""
+
 mcp = FastMCP(
     "bharatvitals",
-    instructions=" ".join(
+    instructions="\n\n".join(
         [
-            "India public health and demographic data.",
-            "Tools prefixed by source: " + ", ".join(f"{s}_*" for s in _SOURCES) + ".",
-            *(f"{m.LABEL}: {m.GUIDE}" for m in MODULES),
-            "If a tool reports an unreachable API, call bharatvitals_health.",
+            "India public health and demographic data. Tools are prefixed by source: "
+            + ", ".join(f"{s}_*" for s in _SOURCES)
+            + ". The sources measure different things and disagree, so pick by question:",
+            "\n".join(f"- {m.LABEL}: {m.GUIDE}" for m in MODULES),
+            CONVENTIONS,
         ]
     ),
 )
+
+mcp.add_middleware(ForgivingArguments())
 
 _client = BharatVitalsClient({m.SOURCE: m.PACKAGE for m in MODULES})
 
@@ -37,18 +54,18 @@ for module in MODULES:
 
 
 def _probe(source: str) -> object:
-    # ponytail: unprobed local sources stay down; health never launches R
-    if not _client.attempted(source):
-        return {"status": "not started; the first tool call starts it"}
     try:
-        return _client.get(source, "/health", {}, timeout=10.0)
+        return _client.health(source)
     except (httpx.HTTPError, RuntimeError, OSError, subprocess.SubprocessError) as e:
         return {"error": str(e)}
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def bharatvitals_health() -> str:
-    """Probe /health of every data API that is configured or has been called; one entry per source."""
+    """Probe /health of every data API that is configured or has been called; one entry per source.
+
+    Never starts an R backend; a source not yet used reports "not started".
+    """
     with ThreadPoolExecutor(len(_SOURCES)) as pool:
         return json.dumps(dict(zip(_SOURCES, pool.map(_probe, _SOURCES))))
 
